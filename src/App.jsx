@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import bannerInicio from './assets/banner-inicio.png'
 import sapateado from './assets/sapateado.png'
 import jazz from './assets/jazz.png'
 import balletClassico from './assets/ballet-classico.png'
 import logoRosa from './assets/logo-rosa.png'
+import tourStudio from './assets/tour-studio.mp4'
 import './App.css'
 
 const navigation = ['Modalidades', 'Studio', 'Espetáculos', 'Loja']
@@ -78,6 +79,7 @@ function App() {
           </svg>
         </a>
       </section>
+      
 
       <section
         className="modalities-section"
@@ -121,8 +123,60 @@ function App() {
           ></button>
         </div>
       </section>
+      <section className="studio-section" aria-labelledby="studio-title">
+        <div className="studio-inner">
+          <div className="studio-media">
+            <div className="studio-card">
+                <video src={tourStudio} className="studio-video" autoPlay muted loop playsInline aria-hidden="true" />
+                <a className="studio-btn studio-btn--over" href="#endereco">Endereço do Studio →</a>
+              </div>
+          </div>
+
+          <div className="studio-content">
+            <h2 id="studio-title">Studio Keli Dalpian</h2>
+            <p className="studio-lead">Onde cada movimento encontra seu espaço</p>
+            <p>
+              O Studio Keli Dalpian nasceu para transformar a dança em uma experiência de
+              desenvolvimento, expressão e conexão.
+            </p>
+            <p>
+              Em um ambiente acolhedor e inspirador, cada aluno é incentivado a descobrir
+              seu potencial, desenvolver sua técnica e encontrar na dança uma forma única
+              de se expressar. Mais do que ensinar movimentos, o Studio constrói histórias,
+              memórias e vínculos que acompanham cada bailarino dentro e fora do palco.
+            </p>
+
+            <div className="studio-stats">
+              <div className="stat"><AnimatedNumber target={4} duration={900} /><span className="stat-label">anos de História</span></div>
+              <div className="stat"><AnimatedNumber target={300} duration={1400} /><span className="stat-label">alunos</span></div>
+              <div className="stat"><AnimatedNumber target={4} duration={900} /><span className="stat-label">Espetáculos</span></div>
+            </div>
+            
+          </div>
+        </div>
+      </section>
     </main>
   )
+}
+
+function AnimatedNumber({ target, duration = 1200 }) {
+  const [value, setValue] = useState(0)
+
+  useEffect(() => {
+    let rafId
+    let start
+    const step = (timestamp) => {
+      if (!start) start = timestamp
+      const progress = Math.min((timestamp - start) / duration, 1)
+      const current = Math.floor(progress * target)
+      setValue(current)
+      if (progress < 1) rafId = requestAnimationFrame(step)
+    }
+    rafId = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(rafId)
+  }, [target, duration])
+
+  return <span className="stat-number">+{value}</span>
 }
 
 export default App
