@@ -56,7 +56,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(24px, 3.4vw, 55px);
+  gap: 100px;
   flex: 1;
   margin: 0 clamp(20px, 3.4vw, 55px);
 }
@@ -67,7 +67,7 @@
   gap: 8px;
   color: var(--rose);
   font-family: Montserrat, Arial, sans-serif;
-  font-size: clamp(.63rem, .78vw, .78rem);
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: .015em;
   text-decoration: none;
@@ -75,7 +75,7 @@
   transition: color 180ms ease, transform 180ms ease;
 }
 
-.main-navigation a:hover,
+.main-navigation a:ho cver,
 .main-navigation a:focus-visible {
   color: var(--navy);
   transform: translateY(-2px);
@@ -766,5 +766,266 @@
 
   .hero-banner {
     height: 470px;
+  }
+}
+
+/* Seção Professoras */
+.teachers-section {
+  position: relative;
+  padding: 32px 6vw 60px;
+  background: url('./assets/fundo-professoras.png') center center / cover no-repeat;
+}
+
+.teachers-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.teachers-heading {
+  margin-bottom: 18px;
+}
+
+.teachers-heading h2 {
+  margin: 0;
+  color: var(--navy);
+  font-family: var(--font-editorial);
+  font-size: clamp(2.3rem, 3.8vw, 5rem);
+  letter-spacing: .04em;
+  line-height: .9;
+  text-transform: uppercase;
+}
+
+.teachers-heading p {
+  margin: 12px auto 0;
+  max-width: 900px;
+  color: var(--navy);
+  font-family: var(--font-interface);
+  font-size: clamp(1rem, 1.5vw, 1.7rem);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.teachers-carousel {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 14px;
+  padding: 0 54px;
+}
+
+.teachers-list {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 18px;
+}
+
+.teacher {
+  position: relative;
+  z-index: 1;
+  display: block;
+  flex: 0 0 clamp(120px, 14vw, 220px);
+  min-width: 0;
+  color: var(--navy);
+  text-decoration: none;
+  transition: transform 280ms cubic-bezier(.2, .8, .2, 1), z-index 0s linear 280ms;
+}
+
+.teacher-card {
+  position: relative;
+  height: clamp(170px, 18vw, 260px);
+  overflow: visible;
+  border: 2px solid var(--rose);
+  border-radius: 999px 999px 0 0;
+  background: var(--off-white);
+  box-shadow: 0 10px 16px rgba(15, 28, 45, 0.08);
+  transition: background-color 280ms ease, box-shadow 280ms ease;
+}
+
+.teacher-card::before {
+  position: absolute;
+  z-index: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 60%;
+  border-radius: 999px 999px 0 0;
+  background: var(--rose);
+  content: '';
+}
+
+.teacher-art {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.teacher-art img {
+  position: absolute;
+  z-index: 1;
+  bottom: -3%;
+  left: 50%;
+  display: block;
+  width: 104%;
+  height: 98%;
+  max-width: none;
+  object-fit: contain;
+  object-position: bottom center;
+  transform: translateX(-50%);
+  transition: transform 320ms cubic-bezier(.2, .8, .2, 1), filter 280ms ease;
+}
+
+.teacher h2 {
+  position: absolute;
+  z-index: 2;
+  right: 12px;
+  bottom: 18px;
+  left: 12px;
+  margin: 0;
+  opacity: 0;
+  color: var(--navy);
+  font-family: var(--font-interface);
+  font-size: clamp(.9rem, 1.2vw, 1.5rem);
+  font-weight: 700;
+  letter-spacing: .03em;
+  line-height: 1.1;
+  text-align: center;
+  text-transform: uppercase;
+  transform: translateY(12px);
+  transition: opacity 200ms ease 60ms, transform 260ms ease 60ms;
+}
+
+.teacher:hover,
+.teacher:focus-visible {
+  z-index: 4;
+  outline: 0;
+  transform: scale(1.08) translateY(-8px);
+}
+
+.teacher:hover .teacher-card,
+.teacher:focus-visible .teacher-card {
+  box-shadow: 0 20px 28px rgba(15, 28, 45, 0.18);
+}
+
+.teacher:hover .teacher-art,
+.teacher:focus-visible .teacher-art {
+  overflow: visible;
+}
+
+.teacher:hover .teacher-art img,
+.teacher:focus-visible .teacher-art img {
+  filter: drop-shadow(0 14px 10px rgba(15, 28, 45, 0.18));
+  transform: translateX(-50%) translateY(-28px) scale(1.04);
+}
+
+.teacher:hover h2,
+.teacher:focus-visible h2 {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.teacher--featured {
+  flex-basis: clamp(170px, 20vw, 270px);
+  margin-bottom: -18px;
+}
+
+.teacher--featured .teacher-card {
+  height: clamp(220px, 24vw, 330px);
+}
+
+.teacher--featured .teacher-card::before {
+  z-index: 2;
+  height: 38%;
+}
+
+.teacher--featured .teacher-art {
+  overflow: visible;
+}
+
+.teacher--featured .teacher-art img {
+  position: relative;
+  z-index: 1;
+  height: 94%;
+  transform: translateX(-50%) translateY(-20px) scale(1.08);
+}
+
+.teacher--featured h2 {
+  z-index: 3;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.teacher-nav {
+  position: absolute;
+  top: 50%;
+  z-index: 5;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-top: 5px solid var(--off-white);
+  border-right: 5px solid var(--off-white);
+  background: transparent;
+  cursor: pointer;
+  filter: drop-shadow(0 1px 1px rgba(15, 28, 45, 0.08));
+}
+
+.teacher-nav--prev {
+  left: 0;
+  transform: translateY(-50%) rotate(-135deg);
+}
+
+.teacher-nav--next {
+  right: 0;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.teacher-nav:hover {
+  border-color: var(--navy);
+}
+
+.teacher-nav:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 5px;
+}
+
+@media (max-width: 880px) {
+  .teachers-section {
+    padding: 40px 4vw 64px;
+  }
+
+  .teachers-carousel {
+    gap: 12px;
+    padding: 0 30px;
+  }
+
+  .teachers-list {
+    gap: 12px;
+  }
+
+  .teacher {
+    flex-basis: 120px;
+  }
+
+  .teacher-card {
+    height: 180px;
+  }
+
+  .teacher--featured {
+    flex-basis: 180px;
+  }
+
+  .teacher--featured .teacher-card {
+    height: 240px;
+  }
+
+  .teacher-nav {
+    width: 24px;
+    height: 24px;
+    border-top-width: 4px;
+    border-right-width: 4px;
   }
 }

@@ -5,6 +5,7 @@ import jazz from './assets/jazz.png'
 import balletClassico from './assets/ballet-classico.png'
 import logoRosa from './assets/logo-rosa.png'
 import tourStudio from './assets/tour-studio.mp4'
+import fundoProfessoras from './assets/fundo-professoras.png'
 import './App.css'
 
 const navigation = ['Modalidades', 'Studio', 'Espetáculos', 'Loja']
@@ -12,6 +13,11 @@ const modalities = [
   { name: 'Sapateado', image: sapateado, slug: 'sapateado' },
   { name: 'Ballet Clássico', image: balletClassico, slug: 'ballet-classico', featured: true },
   { name: 'Jazz', image: jazz, slug: 'jazz' },
+]
+const teachers = [
+  { name: 'Sapateado', image: sapateado, slug: 'professora-sapateado' },
+  { name: 'Ballet Clássico', image: balletClassico, slug: 'keli-dalpian', featured: true },
+  { name: 'Jazz', image: jazz, slug: 'professora-jazz' },
 ]
 
 function App() {
@@ -22,8 +28,18 @@ function App() {
     return { ...modalities[index], featured: offset === 0 }
   })
 
+  const [activeTeacherIndex, setActiveTeacherIndex] = useState(1)
+  const displayedTeachers = [-1, 0, 1].map((offset) => {
+    const index = (activeTeacherIndex + offset + teachers.length) % teachers.length
+    return { ...teachers[index], featured: offset === 0 }
+  })
+
   const changeModality = (direction) => {
     setActiveModalityIndex((index) => (index + direction + modalities.length) % modalities.length)
+  }
+
+  const changeTeacher = (direction) => {
+    setActiveTeacherIndex((index) => (index + direction + teachers.length) % teachers.length)
   }
 
   return (
@@ -79,6 +95,7 @@ function App() {
           </svg>
         </a>
       </section>
+      
       
 
       <section
@@ -152,6 +169,53 @@ function App() {
               <div className="stat"><AnimatedNumber target={4} duration={900} /><span className="stat-label">Espetáculos</span></div>
             </div>
             
+          </div>
+        </div>
+      </section>
+
+      <section className="teachers-section" aria-labelledby="teachers-title">
+        <div className="teachers-inner">
+          <div className="teachers-heading">
+            <h2 id="teachers-title">PROFESSORAS</h2>
+            <p>Conheça quem ensina, inspira e transforma através da dança.</p>
+          </div>
+
+          <div className="teachers-carousel">
+            <button
+              className="teacher-nav teacher-nav--prev"
+              type="button"
+              aria-label="Professor anterior"
+              onClick={() => changeTeacher(-1)}
+            >
+              ‹
+            </button>
+
+            <div className="teachers-list">
+              {displayedTeachers.map((teacher) => (
+                <a
+                  className={`teacher ${teacher.featured ? 'teacher--featured' : ''}`}
+                  href={`#${teacher.slug}`}
+                  key={teacher.slug}
+                  aria-label={`Conheça ${teacher.name}`}
+                >
+                  <div className="teacher-card">
+                    <div className="teacher-art">
+                      <img src={teacher.image} alt="" />
+                    </div>
+                    <h2>{teacher.name}</h2>
+                  </div>
+                </a>
+              ))}
+            </div>
+
+            <button
+              className="teacher-nav teacher-nav--next"
+              type="button"
+              aria-label="Próxima professora"
+              onClick={() => changeTeacher(1)}
+            >
+              ›
+            </button>
           </div>
         </div>
       </section>
