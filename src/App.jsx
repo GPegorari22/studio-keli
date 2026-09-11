@@ -4,6 +4,7 @@ import sapateado from './assets/sapateado.png'
 import jazz from './assets/jazz.png'
 import balletClassico from './assets/ballet-classico.png'
 import logoRosa from './assets/logo-rosa.png'
+import logoBranca from './assets/logo-branca.png'
 import tourStudio from './assets/tour-studio.mp4'
 import separacaoPagina from './assets/separacao-pagina.png'
 import enrolados from './assets/enrolados.png'
@@ -265,12 +266,12 @@ function App() {
                   className={`show ${show.featured ? 'show--featured' : ''} show-${show.slug}`}
                   aria-label={`Conheça ${show.name}`}>
                   <div className="show-card">
-                    <div className="show-art">
-                      <img src={show.image} alt={show.name} />
+                      <div className="show-art">
+                        <img src={show.image} alt={show.name} />
+                      </div>
+                      <span className="show-year">{show.year}</span>
                     </div>
-                    {show.featured && <span className="show-year">2025</span>}
-                  </div>
-                  <h3 className="show-title">{show.name}</h3>
+                    <h3 className="show-title">{show.name}</h3>
                 </a>
               ))}
             </div>
@@ -287,30 +288,6 @@ function App() {
         </div>
       </section>
 
-      <section className="backstage-section" id="bastidores" aria-labelledby="backstage-title">
-        <div className="backstage-frame">
-          <div className="backstage-border" aria-hidden="true" />
-          <header className="backstage-heading">
-            <h2 id="backstage-title">Bastidores</h2>
-            <p>Acompanhe o que acontece antes<br />das cortinas abrirem.</p>
-          </header>
-
-          <div className="backstage-gallery">
-            <div className="backstage-photo backstage-photo--barre" role="img" aria-label="Alunas praticando ballet na barra">
-              <img src={bastidoresBarra} alt="" />
-            </div>
-            <div className="backstage-photo backstage-photo--teacher" role="img" aria-label="Aula de ballet no estúdio">
-              <img src={bastidoresAula} alt="" />
-            </div>
-            <div className="backstage-photo backstage-photo--stretch" role="img" aria-label="Bailarina em ensaio no estúdio">
-              <img src={bastidoresSolo} alt="" />
-            </div>
-            <div className="backstage-photo backstage-photo--rehearsal" role="img" aria-label="Grupo ensaiando coreografia">
-              <img src={bastidoresEnsaio} alt="" />
-            </div>
-          </div>
-        </div>
-      </section>
       <section className="inscricao-section" id="inscricao" aria-labelledby="inscricao-title">
         <div className="inscricao-inner">
           <div className="inscricao-art" aria-hidden="true">
@@ -324,6 +301,46 @@ function App() {
           </div>
         </div>
       </section>
+      <footer className="site-footer" aria-labelledby="footer-title">
+        <div className="footer-top">
+          <div className="footer-logo">
+            <img src={logoBranca} alt="Keli Dalpian" />
+          </div>
+
+          <div className="footer-inner">
+            <p className="footer-tagline">Dança • Arte • Movimento</p>
+
+              <div className="footer-grid">
+                <div className="footer-col">
+                  <a href="#studio">STUDIO →</a>
+                  <a href="#equipe">EQUIPE →</a>
+                  <a href="#loja">LOJA →</a>
+                </div>
+
+                <div className="footer-col">
+                  <a href="#modalidades">MODALIDADES →</a>
+                  <a href="#espetaculos">ESPETÁCULOS →</a>
+                  <a href="#perfil">PERFIL →</a>
+                </div>
+
+                <div className="footer-social">
+                  <a className="social-link" href="#" aria-label="Instagram">
+                    <img className="social-img" src="https://cdn.jsdelivr.net/npm/simple-icons@v8/icons/instagram.svg" alt="Instagram" />
+                    <span>Instagram</span>
+                  </a>
+                  <a className="social-link" href="#" aria-label="Whatsapp">
+                    <img className="social-img" src="https://cdn.jsdelivr.net/npm/simple-icons@v8/icons/whatsapp.svg" alt="Whatsapp" />
+                    <span>Whatsapp</span>
+                  </a>
+                </div>
+              </div>
+          </div>
+        </div>
+
+        <div className="footer-bottom">
+          <p>Studio Keli Dalpian | © 2026</p>
+        </div>
+      </footer>
     </main>
   )
 }
