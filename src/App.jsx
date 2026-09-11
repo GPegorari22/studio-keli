@@ -5,8 +5,16 @@ import jazz from './assets/jazz.png'
 import balletClassico from './assets/ballet-classico.png'
 import logoRosa from './assets/logo-rosa.png'
 import tourStudio from './assets/tour-studio.mp4'
-import fundoProfessoras from './assets/fundo-professoras.png'
+import separacaoPagina from './assets/separacao-pagina.png'
+import enrolados from './assets/enrolados.png'
+import brancaNeve from './assets/branca-neve.png'
+import belaFera from './assets/bela-fera.png'
+import bastidoresBarra from './assets/bastidores-barra-figma.png'
+import bastidoresAula from './assets/bastidores-aula-figma.png'
+import bastidoresSolo from './assets/bastidores-solo-figma.png'
+import bastidoresEnsaio from './assets/bastidores-ensaio-figma.png'
 import './App.css'
+import inscricao from './assets/inscrição.png'
 
 const navigation = ['Modalidades', 'Studio', 'Espetáculos', 'Loja']
 const modalities = [
@@ -18,6 +26,12 @@ const teachers = [
   { name: 'Sapateado', image: sapateado, slug: 'professora-sapateado' },
   { name: 'Ballet Clássico', image: balletClassico, slug: 'keli-dalpian', featured: true },
   { name: 'Jazz', image: jazz, slug: 'professora-jazz' },
+]
+
+const shows = [
+  { name: 'Enrolados', image: enrolados, slug: 'enrolados', year: '2022' },
+  { name: 'Branca de Neve', image: brancaNeve, slug: 'branca-de-neve', featured: true, year: '2025' },
+  { name: 'Bela e a Fera', image: belaFera, slug: 'bela-e-a-fera', year: '2023' },
 ]
 
 function App() {
@@ -34,12 +48,22 @@ function App() {
     return { ...teachers[index], featured: offset === 0 }
   })
 
+  const [activeShowIndex, setActiveShowIndex] = useState(1)
+  const displayedShows = [-1, 0, 1].map((offset) => {
+    const index = (activeShowIndex + offset + shows.length) % shows.length
+    return { ...shows[index], featured: offset === 0 }
+  })
+
   const changeModality = (direction) => {
     setActiveModalityIndex((index) => (index + direction + modalities.length) % modalities.length)
   }
 
   const changeTeacher = (direction) => {
     setActiveTeacherIndex((index) => (index + direction + teachers.length) % teachers.length)
+  }
+
+  const changeShow = (direction) => {
+    setActiveShowIndex((index) => (index + direction + shows.length) % shows.length)
   }
 
   return (
@@ -95,8 +119,6 @@ function App() {
           </svg>
         </a>
       </section>
-      
-      
 
       <section
         className="modalities-section"
@@ -216,6 +238,89 @@ function App() {
             >
               ›
             </button>
+          </div>
+        </div>
+      </section>
+      <img src={separacaoPagina} alt="" className="separacao-pagina" />
+      <section className="shows-section" aria-labelledby="shows-title">
+        <div className="shows-inner">
+          <h2 id="shows-title">ESPETÁCULOS</h2>
+          <p className="shows-lead">Quando a dança ganha <strong>palco</strong>.</p>
+
+          <div className="shows-carousel">
+            <button
+              className="showcase-arrow showcase-arrow--previous"
+              type="button"
+              aria-label="Espetáculo anterior"
+              onClick={() => changeShow(-1)}
+            >
+              ‹
+            </button>
+
+            <div className="shows-list">
+              {displayedShows.map((show) => (
+                <a
+                  key={show.slug}
+                  href={`#${show.slug}`}
+                  className={`show ${show.featured ? 'show--featured' : ''} show-${show.slug}`}
+                  aria-label={`Conheça ${show.name}`}>
+                  <div className="show-card">
+                    <div className="show-art">
+                      <img src={show.image} alt={show.name} />
+                    </div>
+                    {show.featured && <span className="show-year">2025</span>}
+                  </div>
+                  <h3 className="show-title">{show.name}</h3>
+                </a>
+              ))}
+            </div>
+
+            <button
+              className="showcase-arrow showcase-arrow--next"
+              type="button"
+              aria-label="Próximo espetáculo"
+              onClick={() => changeShow(1)}
+            >
+              ›
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section className="backstage-section" id="bastidores" aria-labelledby="backstage-title">
+        <div className="backstage-frame">
+          <div className="backstage-border" aria-hidden="true" />
+          <header className="backstage-heading">
+            <h2 id="backstage-title">Bastidores</h2>
+            <p>Acompanhe o que acontece antes<br />das cortinas abrirem.</p>
+          </header>
+
+          <div className="backstage-gallery">
+            <div className="backstage-photo backstage-photo--barre" role="img" aria-label="Alunas praticando ballet na barra">
+              <img src={bastidoresBarra} alt="" />
+            </div>
+            <div className="backstage-photo backstage-photo--teacher" role="img" aria-label="Aula de ballet no estúdio">
+              <img src={bastidoresAula} alt="" />
+            </div>
+            <div className="backstage-photo backstage-photo--stretch" role="img" aria-label="Bailarina em ensaio no estúdio">
+              <img src={bastidoresSolo} alt="" />
+            </div>
+            <div className="backstage-photo backstage-photo--rehearsal" role="img" aria-label="Grupo ensaiando coreografia">
+              <img src={bastidoresEnsaio} alt="" />
+            </div>
+          </div>
+        </div>
+      </section>
+      <section className="inscricao-section" id="inscricao" aria-labelledby="inscricao-title">
+        <div className="inscricao-inner">
+          <div className="inscricao-art" aria-hidden="true">
+            <img src={inscricao} alt="Inscrição" />
+          </div>
+
+          <div className="inscricao-content">
+            <h2 id="inscricao-title">Marque uma aula experimental</h2>
+            <p>Sua jornada também pode começar aqui. Nunca dançou antes? Não tem problema.</p>
+            <a className="btn btn-primary" href="#contato">Inscreva-se</a>
           </div>
         </div>
       </section>
