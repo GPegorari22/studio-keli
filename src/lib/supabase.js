@@ -5,7 +5,7 @@ const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.tr
 
 if (!supabaseUrl || !supabasePublishableKey) {
   throw new Error(
-    'Configure VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY no arquivo .env.local e reinicie o Vite.',
+    'erro',
   )
 }
 

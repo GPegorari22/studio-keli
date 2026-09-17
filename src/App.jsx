@@ -16,7 +16,11 @@ import separacaoPagina from './assets/separacao-pagina.png'
 import enrolados from './assets/enrolados.png'
 import brancaNeve from './assets/branca-neve.png'
 import belaFera from './assets/bela-fera.png'
+import secaoEspetaculos from './assets/secao-espetaculos.png'
+import professoraGenerica from './assets/professora-generica.png'
 import './App.css'
+import AOS from 'aos'
+import 'aos/dist/aos.css'
 import inscricao from './assets/inscrição.png'
 import { supabase } from './lib/supabase.js'
 
@@ -28,9 +32,23 @@ const modalities = [
 ]
 const teachers = [
   { name: 'Sapateado', image: sapateado, slug: 'professora-sapateado' },
-  { name: 'Ballet Clássico', image: balletClassico, slug: 'keli-dalpian', featured: true },
+  { name: 'Keli Dalpian', image: professoraGenerica, slug: 'keli-dalpian', featured: true },
   { name: 'Jazz', image: jazz, slug: 'professora-jazz' },
 ]
+
+const teacherDetails = {
+  'keli-dalpian': {
+    name: 'Keli Dalpian',
+    image: professoraGenerica,
+    introduction: 'À frente do Studio, Keli transforma sua experiência e paixão pela dança em um espaço de aprendizado, expressão e desenvolvimento.',
+    specialties: 'Coreógrafa · Ballet Clássico · Preparação artística',
+    responsibilities: [
+      { title: 'Direção artística', description: 'Responsável pela direção e desenvolvimento artístico do Studio.' },
+      { title: 'Ensino', description: 'Atua na formação técnica e artística de bailarinos.' },
+      { title: 'Coreografia', description: 'Participação na criação e preparação de apresentações e espetáculos.' },
+    ],
+  },
+}
 
 const shows = [
   { name: 'Enrolados', image: enrolados, slug: 'enrolados', year: '2022' },
@@ -123,11 +141,6 @@ const modalityDetails = {
   },
 }
 
-const trialSchedules = [
-  { id: 'terca-1800', day: 'Terça-feira', time: '18:00 — 19:00', room: 'Sala 02' },
-  { id: 'quinta-1800', day: 'Quinta-feira', time: '18:00 — 19:00', room: 'Sala 02' },
-]
-
 const initialTrialForm = {
   modality: '',
   audience: '',
@@ -137,10 +150,37 @@ const initialTrialForm = {
   fullName: '',
   email: '',
   phone: '',
+  responsibleName: '',
+  responsiblePhone: '',
+}
+
+const formatClassTime = (time) => time?.slice(0, 5) ?? ''
+
+const formatVacancies = (vacancies) => {
+  const quantity = Number(vacancies)
+  return `${quantity} ${quantity === 1 ? 'vaga disponível' : 'vagas disponíveis'}`
+}
+
+const matchesSelectedModality = (className, modalitySearch) => (
+  className?.toLocaleLowerCase('pt-BR').includes(modalitySearch)
+)
+
+const formatPhoneNumber = (value) => {
+  const digits = value.replace(/\D/g, '').slice(0, 13)
+  const hasBrazilCountryCode = digits.startsWith('55') && digits.length > 11
+  const localNumber = hasBrazilCountryCode ? digits.slice(2) : digits
+  const countryCode = hasBrazilCountryCode ? '+55 ' : ''
+
+  if (localNumber.length === 0) return ''
+  if (localNumber.length <= 2) return `${countryCode}(${localNumber}`
+  if (localNumber.length <= 6) return `${countryCode}(${localNumber.slice(0, 2)}) ${localNumber.slice(2)}`
+  if (localNumber.length <= 10) return `${countryCode}(${localNumber.slice(0, 2)}) ${localNumber.slice(2, 6)}-${localNumber.slice(6)}`
+  return `${countryCode}(${localNumber.slice(0, 2)}) ${localNumber.slice(2, 7)}-${localNumber.slice(7, 11)}`
 }
 
 function App() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [headerIsCompact, setHeaderIsCompact] = useState(false)
   const [activeModalSlug, setActiveModalSlug] = useState(null)
   const [openModalityClass, setOpenModalityClass] = useState(null)
   const modalRef = useRef(null)
@@ -150,6 +190,9 @@ function App() {
   const [trialAttemptedStep, setTrialAttemptedStep] = useState(null)
   const [trialSubmitError, setTrialSubmitError] = useState('')
   const [trialSubmitting, setTrialSubmitting] = useState(false)
+  const [availableClasses, setAvailableClasses] = useState([])
+  const [availableClassesLoading, setAvailableClassesLoading] = useState(false)
+  const [availableClassesError, setAvailableClassesError] = useState('')
   const trialModalRef = useRef(null)
   const activeModal = modalityDetails[activeModalSlug]
   const [activeModalityIndex, setActiveModalityIndex] = useState(1)
@@ -159,6 +202,9 @@ function App() {
   })
 
   const [activeTeacherIndex, setActiveTeacherIndex] = useState(1)
+  const [activeTeacherModalSlug, setActiveTeacherModalSlug] = useState(null)
+  const teacherModalRef = useRef(null)
+  const activeTeacherModal = teacherDetails[activeTeacherModalSlug]
   const displayedTeachers = [-1, 0, 1].map((offset) => {
     const index = (activeTeacherIndex + offset + teachers.length) % teachers.length
     return { ...teachers[index], featured: offset === 0 }
@@ -178,9 +224,30 @@ function App() {
     setActiveTeacherIndex((index) => (index + direction + teachers.length) % teachers.length)
   }
 
+  const openTeacherModal = (slug) => {
+    if (teacherDetails[slug]) setActiveTeacherModalSlug(slug)
+  }
+
   const changeShow = (direction) => {
     setActiveShowIndex((index) => (index + direction + shows.length) % shows.length)
   }
+
+  useEffect(() => {
+    const updateHeaderState = () => setHeaderIsCompact(window.scrollY > 72)
+
+    updateHeaderState()
+    window.addEventListener('scroll', updateHeaderState, { passive: true })
+    return () => window.removeEventListener('scroll', updateHeaderState)
+  }, [])
+
+  useEffect(() => {
+    AOS.init({
+      duration: 800,
+      easing: 'ease-out-cubic',
+      once: true,
+      offset: 90,
+    })
+  }, [])
 
   const openTrialModal = () => {
     setTrialForm(initialTrialForm)
@@ -188,6 +255,8 @@ function App() {
     setTrialAttemptedStep(null)
     setTrialSubmitError('')
     setTrialSubmitting(false)
+    setAvailableClasses([])
+    setAvailableClassesError('')
     setTrialModalOpen(true)
   }
 
@@ -202,10 +271,26 @@ function App() {
     if (trialStep === 2) return Boolean(trialForm.audience && trialForm.experience && trialForm.birthDate)
     if (trialStep === 3) return Boolean(trialForm.schedule)
     if (trialStep === 4) {
+      const fullName = trialForm.fullName.trim()
+      const email = trialForm.email.trim()
+      const phone = trialForm.phone.trim()
+      const responsibleName = trialForm.responsibleName.trim()
+      const responsiblePhone = trialForm.responsiblePhone.trim()
+      const isForChild = trialForm.audience === 'Para o meu filho'
+
       return Boolean(
-        trialForm.fullName.trim()
-        && /^\S+@\S+\.\S+$/.test(trialForm.email)
-        && trialForm.phone.trim(),
+        fullName.length >= 2
+        && fullName.length <= 150
+        && email.length <= 150
+        && /^\S+@\S+\.\S+$/.test(email)
+        && phone.length >= 8
+        && phone.length <= 20
+        && (!isForChild || (
+          responsibleName.length >= 2
+          && responsibleName.length <= 150
+          && responsiblePhone.length >= 8
+          && responsiblePhone.length <= 20
+        ))
       )
     }
     return true
@@ -222,7 +307,16 @@ function App() {
   }
 
   const selectedTrialModality = modalities.find((modality) => modality.slug === trialForm.modality)
-  const selectedTrialSchedule = trialSchedules.find((schedule) => schedule.id === trialForm.schedule)
+  const selectedTrialSchedule = availableClasses.find((turma) => String(turma.id_turma) === trialForm.schedule)
+  const isTrialForChild = trialForm.audience === 'Para o meu filho'
+  const selectedTrialModalitySearch = {
+    'ballet-classico': 'ballet',
+    jazz: 'jazz',
+    sapateado: 'sapateado',
+  }[selectedTrialModality?.slug]
+  const shouldDisableTrialContinue = trialSubmitting || (
+    trialStep === 3 && (availableClassesLoading || Boolean(availableClassesError) || availableClasses.length === 0)
+  )
 
   const submitTrialRequest = async () => {
     if (!isTrialStepValid() || !selectedTrialModality || !selectedTrialSchedule) {
@@ -234,26 +328,56 @@ function App() {
     setTrialSubmitError('')
 
     try {
+      const { data: currentClass, error: currentClassError } = await supabase
+        .from('turmas_disponiveis_inscricao')
+        .select('id_turma, nome, dia_semana, horario, vagas_disponiveis')
+        .eq('id_turma', selectedTrialSchedule.id_turma)
+        .maybeSingle()
+
+      if (currentClassError) throw currentClassError
+
+      if (!currentClass || Number(currentClass.vagas_disponiveis) < 1) {
+        setTrialForm((current) => ({ ...current, schedule: '' }))
+        setTrialStep(3)
+        setTrialSubmitError('Esta turma acabou de ficar lotada. Escolha outra opção disponível.')
+        return
+      }
+
       const { error } = await supabase
-        .from('solicitacao_aula_experimental')
+        .from('possivel_aluno')
         .insert({
-          nome_completo: trialForm.fullName.trim(),
+          nome: trialForm.fullName.trim(),
           email: trialForm.email.trim().toLowerCase(),
           telefone: trialForm.phone.trim(),
+          nome_responsavel: isTrialForChild ? trialForm.responsibleName.trim() : null,
+          telefone_responsavel: isTrialForChild ? trialForm.responsiblePhone.trim() : null,
           data_nascimento: trialForm.birthDate,
-          destinatario: trialForm.audience,
-          experiencia_danca: trialForm.experience,
-          modalidade: selectedTrialModality.name,
-          dia_semana: selectedTrialSchedule.day,
-          horario_preferido: selectedTrialSchedule.time,
-          sala_preferida: selectedTrialSchedule.room,
+          horario_aula_experimental: currentClass.horario,
+          origem: 'SITE - AULA EXPERIMENTAL',
+          status: 'NOVO',
+          id_turma: currentClass.id_turma,
+          observacoes: [
+            `Modalidade de interesse: ${selectedTrialModality.name}`,
+            `Para quem: ${trialForm.audience}`,
+            `Experiência com dança: ${trialForm.experience}`,
+            `Turma escolhida: ${currentClass.nome}`,
+            `Horário da turma: ${currentClass.dia_semana}, ${formatClassTime(currentClass.horario)}`,
+          ].join('\n'),
         })
 
       if (error) throw error
 
       setTrialStep(5)
-    } catch {
-      setTrialSubmitError('Não foi possível enviar sua solicitação agora. Tente novamente em instantes.')
+    } catch (error) {
+      console.error('Falha ao criar solicitação de aula experimental:', error)
+
+      if (error?.code === '42501') {
+        setTrialSubmitError('O banco ainda não está autorizado para receber solicitações. Aplique a migration de permissões e tente novamente.')
+      } else if (error?.code === '23503') {
+        setTrialSubmitError('A turma escolhida não está mais disponível. Volte e selecione outra turma.')
+      } else {
+        setTrialSubmitError('Não foi possível enviar sua solicitação agora. Tente novamente em instantes.')
+      }
     } finally {
       setTrialSubmitting(false)
     }
@@ -292,6 +416,42 @@ function App() {
   }, [activeModalSlug])
 
   useEffect(() => {
+    if (!activeTeacherModalSlug) return undefined
+
+    const previousFocus = document.activeElement
+    const focusableElements = teacherModalRef.current?.querySelectorAll('button, a[href], [tabindex="0"]') ?? []
+    const firstElement = focusableElements[0]
+    const lastElement = focusableElements[focusableElements.length - 1]
+
+    const handleTeacherModalKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setActiveTeacherModalSlug(null)
+        return
+      }
+
+      if (event.key !== 'Tab' || !firstElement || !lastElement) return
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault()
+        lastElement.focus()
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault()
+        firstElement.focus()
+      }
+    }
+
+    document.body.classList.add('has-modal-open')
+    firstElement?.focus({ preventScroll: true })
+    window.addEventListener('keydown', handleTeacherModalKeyDown)
+
+    return () => {
+      document.body.classList.remove('has-modal-open')
+      window.removeEventListener('keydown', handleTeacherModalKeyDown)
+      previousFocus?.focus({ preventScroll: true })
+    }
+  }, [activeTeacherModalSlug])
+
+  useEffect(() => {
     if (!trialModalOpen) return undefined
 
     const previousFocus = document.activeElement
@@ -327,10 +487,67 @@ function App() {
     }
   }, [trialModalOpen])
 
+  useEffect(() => {
+    if (!trialModalOpen || trialStep !== 3) return undefined
+
+    let isCurrentRequest = true
+
+    const loadAvailableClasses = async (showLoading = false) => {
+      if (showLoading) setAvailableClassesLoading(true)
+      setAvailableClassesError('')
+
+      let { data, error } = await supabase
+        .from('turmas_disponiveis_inscricao')
+        .select('id_turma, nome, dia_semana, horario, capacidade, alunos_matriculados, vagas_disponiveis, id_modalidade, modalidade_nome')
+        .ilike('modalidade_nome', `%${selectedTrialModalitySearch}%`)
+        .order('dia_semana', { ascending: true })
+        .order('horario', { ascending: true })
+
+      // Compatibilidade temporária para a versão anterior da view, que ainda não
+      // possui os campos da modalidade. As vagas continuam vindo do banco; apenas
+      // o filtro usa o nome da turma até a migration atualizada ser executada.
+      if (error?.code === '42703') {
+        const legacyResult = await supabase
+          .from('turmas_disponiveis_inscricao')
+          .select('id_turma, nome, dia_semana, horario, capacidade, alunos_matriculados, vagas_disponiveis')
+          .order('dia_semana', { ascending: true })
+          .order('horario', { ascending: true })
+
+        data = legacyResult.data?.filter((turma) => matchesSelectedModality(turma.nome, selectedTrialModalitySearch)) ?? []
+        error = legacyResult.error
+      }
+
+      if (!isCurrentRequest) return
+
+      if (error) {
+        setAvailableClasses([])
+        setAvailableClassesError('Não foi possível carregar as turmas disponíveis. Tente novamente.')
+      } else {
+        const classes = data ?? []
+        setAvailableClasses(classes)
+        setTrialForm((current) => (
+          classes.some((turma) => String(turma.id_turma) === current.schedule)
+            ? current
+            : { ...current, schedule: '' }
+        ))
+      }
+
+      if (showLoading) setAvailableClassesLoading(false)
+    }
+
+    loadAvailableClasses(true)
+    const refreshInterval = window.setInterval(() => loadAvailableClasses(), 10000)
+
+    return () => {
+      isCurrentRequest = false
+      window.clearInterval(refreshInterval)
+    }
+  }, [trialModalOpen, trialStep, selectedTrialModalitySearch])
+
   return (
     <main className="home-page">
       <section className="hero-section" aria-labelledby="home-title">
-        <header className="site-header">
+        <header className={`site-header ${headerIsCompact ? 'is-compact' : ''}`}>
           <a className="brand" href="#inicio" aria-label="Keli Dalpian — início">
             <img src={logoRosa} alt="Keli Dalpian, Studio de Dança" />
           </a>
@@ -349,7 +566,7 @@ function App() {
 
           <nav className={menuOpen ? 'main-navigation is-open' : 'main-navigation'} aria-label="Navegação principal">
             {navigation.map((item) => (
-              <a href={`#${item.toLowerCase().replace('é', 'e')}`} key={item}>
+              <a href={`#${item.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`} key={item}>
                 {item}
                 {item === 'Modalidades' && (
                   <svg viewBox="0 0 12 8" aria-hidden="true">
@@ -385,6 +602,7 @@ function App() {
         className="modalities-section"
         id="modalidades"
         aria-labelledby="modalities-title"
+        data-aos="fade-up"
       >
         <div className="modalities-heading">
           <h1 id="modalities-title">Modalidades</h1>
@@ -432,12 +650,12 @@ function App() {
           ></button>
         </div>
       </section>
-      <section className="studio-section" aria-labelledby="studio-title">
+      <section className="studio-section" id="studio" aria-labelledby="studio-title" data-aos="fade-up">
         <div className="studio-inner">
           <div className="studio-media">
             <div className="studio-card">
                 <video src={tourStudio} className="studio-video" autoPlay muted loop playsInline aria-hidden="true" />
-                <a className="studio-btn studio-btn--over" href="#endereco">Endereço do Studio →</a>
+                <a className="studio-btn studio-btn--over" href="#endereco">Nosso espaço</a>
               </div>
           </div>
 
@@ -465,7 +683,7 @@ function App() {
         </div>
       </section>
 
-      <section className="teachers-section" aria-labelledby="teachers-title">
+      <section className="teachers-section" id="equipe" aria-labelledby="teachers-title" data-aos="fade-up">
         <div className="teachers-inner">
           <div className="teachers-heading">
             <h2 id="teachers-title">PROFESSORAS</h2>
@@ -483,21 +701,33 @@ function App() {
             </button>
 
             <div className="teachers-list">
-              {displayedTeachers.map((teacher) => (
-                <a
-                  className={`teacher ${teacher.featured ? 'teacher--featured' : ''}`}
-                  href={`#${teacher.slug}`}
-                  key={teacher.slug}
-                  aria-label={`Conheça ${teacher.name}`}
-                >
+              {displayedTeachers.map((teacher) => {
+                const isModalAvailable = Boolean(teacherDetails[teacher.slug])
+                const teacherCard = (
                   <div className="teacher-card">
                     <div className="teacher-art">
                       <img src={teacher.image} alt="" />
                     </div>
                     <h2>{teacher.name}</h2>
                   </div>
-                </a>
-              ))}
+                )
+
+                return isModalAvailable ? (
+                  <button
+                    className={`teacher ${teacher.featured ? 'teacher--featured' : ''}`}
+                    type="button"
+                    key={teacher.slug}
+                    aria-label={`Conheça ${teacherDetails[teacher.slug].name}`}
+                    onClick={() => openTeacherModal(teacher.slug)}
+                  >
+                    {teacherCard}
+                  </button>
+                ) : (
+                  <div className={`teacher ${teacher.featured ? 'teacher--featured' : ''}`} key={teacher.slug}>
+                    {teacherCard}
+                  </div>
+                )
+              })}
             </div>
 
             <button
@@ -512,7 +742,7 @@ function App() {
         </div>
       </section>
       <img src={separacaoPagina} alt="" className="separacao-pagina" />
-      <section className="shows-section" aria-labelledby="shows-title">
+      <section className="shows-section" id="espetaculos" aria-labelledby="shows-title" data-aos="fade-up">
         <div className="shows-inner">
           <h2 id="shows-title">ESPETÁCULOS</h2>
           <p className="shows-lead">Quando a dança ganha <strong>palco</strong>.</p>
@@ -557,7 +787,7 @@ function App() {
         </div>
       </section>
 
-      <section className="inscricao-section" id="inscricao" aria-labelledby="inscricao-title">
+      <section className="inscricao-section" id="inscricao" aria-labelledby="inscricao-title" data-aos="fade-up">
         <div className="inscricao-inner">
           <div className="inscricao-art" aria-hidden="true">
             <img src={inscricao} alt="Inscrição" />
@@ -589,11 +819,11 @@ function App() {
                 <div className="footer-col">
                   <a href="#modalidades">MODALIDADES →</a>
                   <a href="#espetaculos">ESPETÁCULOS →</a>
-                  <a href="#perfil">PERFIL →</a>
+                  <button type="button" onClick={() => openTeacherModal('keli-dalpian')}>PERFIL →</button>
                 </div>
 
                 <div className="footer-social">
-                  <a className="social-link" href="#" aria-label="Instagram">
+                  <a className="social-link" href="https://www.instagram.com/kelidalpianstudiodedanca/" target="_blank" rel="noreferrer" aria-label="Abrir Instagram do Studio Keli Dalpian em uma nova aba">
                     <img className="social-img" src="https://cdn.jsdelivr.net/npm/simple-icons@v8/icons/instagram.svg" alt="Instagram" />
                     <span>Instagram</span>
                   </a>
@@ -620,31 +850,35 @@ function App() {
           }}
         >
           <section
-            className="trial-modal"
+            className={`trial-modal ${trialStep === 5 ? 'trial-modal--success' : ''}`}
             ref={trialModalRef}
             role="dialog"
             aria-modal="true"
-            aria-labelledby="trial-modal-title"
-            aria-describedby="trial-modal-subtitle"
+            aria-labelledby={trialStep === 5 ? 'trial-success-title' : 'trial-modal-title'}
+            aria-describedby={trialStep === 5 ? undefined : 'trial-modal-subtitle'}
             onMouseDown={(event) => event.stopPropagation()}
           >
-            <button className="trial-modal__close" type="button" aria-label="Fechar agendamento da aula experimental" onClick={() => setTrialModalOpen(false)}>
-              <span></span><span></span>
-            </button>
+            {trialStep !== 5 && (
+              <button className="trial-modal__close" type="button" aria-label="Fechar agendamento da aula experimental" onClick={() => setTrialModalOpen(false)}>
+                <span></span><span></span>
+              </button>
+            )}
 
-            <div className="trial-modal__loop trial-modal__loop--top" aria-hidden="true"></div>
-            <div className="trial-modal__loop trial-modal__loop--bottom" aria-hidden="true"></div>
+            <img className="trial-modal__ribbon trial-modal__ribbon--top" src={secaoEspetaculos} alt="" aria-hidden="true" />
+            <img className="trial-modal__ribbon trial-modal__ribbon--bottom" src={secaoEspetaculos} alt="" aria-hidden="true" />
 
-            <header className="trial-modal__header">
-              <div aria-hidden="true"></div>
-              <div>
-                <h2 id="trial-modal-title">Aula Experimental</h2>
-                <p id="trial-modal-subtitle">
-                  {trialStep === 1 || trialStep === 4 ? 'Sua primeira dança.' : 'Quase lá! Queremos encontrar a turma ideal para você!'}
-                </p>
-              </div>
-              <div aria-hidden="true"></div>
-            </header>
+            {trialStep !== 5 && (
+              <header className="trial-modal__header">
+                <div aria-hidden="true"></div>
+                <div>
+                  <h2 id="trial-modal-title">Aula Experimental</h2>
+                  <p id="trial-modal-subtitle">
+                    {trialStep === 1 || trialStep === 4 ? 'Sua primeira dança.' : 'Quase lá! Queremos encontrar a turma ideal para você!'}
+                  </p>
+                </div>
+                <div aria-hidden="true"></div>
+              </header>
+            )}
 
             {trialStep === 1 && (
               <section className="trial-modal__step" aria-labelledby="trial-step-one-title">
@@ -704,27 +938,33 @@ function App() {
             {trialStep === 3 && (
               <section className="trial-modal__step" aria-labelledby="trial-step-three-title">
                 <h3 id="trial-step-three-title"><span>3.</span> Disponibilidade e turmas</h3>
-                <div className="trial-schedule-options">
-                  {trialSchedules.map((schedule) => {
-                    const isSelected = trialForm.schedule === schedule.id
+                <p className="trial-modal__question">Turmas disponíveis para {selectedTrialModality?.name}.</p>
+                {availableClassesLoading && <p className="trial-classes-message" role="status">Carregando turmas disponíveis...</p>}
+                {!availableClassesLoading && availableClassesError && <p className="trial-modal__error" role="alert">{availableClassesError}</p>}
+                {!availableClassesLoading && !availableClassesError && availableClasses.length === 0 && <p className="trial-classes-message">Não há turmas com vagas disponíveis no momento.</p>}
+                {!availableClassesLoading && availableClasses.length > 0 && (
+                  <div className="trial-schedule-options">
+                    {availableClasses.map((turma) => {
+                      const isSelected = trialForm.schedule === String(turma.id_turma)
 
-                    return (
-                      <button
-                        type="button"
-                        key={schedule.id}
-                        className={`trial-schedule-option ${isSelected ? 'is-selected' : ''}`}
-                        aria-pressed={isSelected}
-                        onClick={() => updateTrialForm('schedule', schedule.id)}
-                      >
-                        <strong>{schedule.day}</strong>
-                        <span>{schedule.time}</span>
-                        <span>{schedule.room}</span>
-                        <small>● Vagas disponíveis</small>
-                      </button>
-                    )
-                  })}
-                </div>
-                {trialAttemptedStep === 3 && <p className="trial-modal__error" role="alert">Escolha um horário disponível para continuar.</p>}
+                      return (
+                        <button
+                          type="button"
+                          key={turma.id_turma}
+                          className={`trial-schedule-option ${isSelected ? 'is-selected' : ''}`}
+                          aria-pressed={isSelected}
+                          onClick={() => updateTrialForm('schedule', String(turma.id_turma))}
+                        >
+                          <strong>{turma.nome}</strong>
+                          <span>{turma.dia_semana} — {formatClassTime(turma.horario)}</span>
+                          <small>● {formatVacancies(turma.vagas_disponiveis)}</small>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+                {trialAttemptedStep === 3 && !availableClassesLoading && <p className="trial-modal__error" role="alert">Escolha uma turma disponível para continuar.</p>}
+                {trialSubmitError && <p className="trial-modal__error" role="alert">{trialSubmitError}</p>}
               </section>
             )}
 
@@ -734,24 +974,30 @@ function App() {
                 <p className="trial-modal__question">Só precisamos de alguns dados para confirmar seu agendamento.</p>
 
                 <div className="trial-contact-fields">
-                  <label className="trial-input-group"><span>Nome completo</span><input type="text" placeholder="Informe seu nome aqui" value={trialForm.fullName} onChange={(event) => updateTrialForm('fullName', event.target.value)} /></label>
-                  <label className="trial-input-group"><span>E-mail</span><input type="email" placeholder="Digite seu e-mail aqui" value={trialForm.email} onChange={(event) => updateTrialForm('email', event.target.value)} /></label>
-                  <label className="trial-input-group"><span>Telefone/WhatsApp</span><input type="tel" placeholder="+XX (XX) XXXXX-XXXX" value={trialForm.phone} onChange={(event) => updateTrialForm('phone', event.target.value)} /></label>
+                  <label className="trial-input-group"><span>{isTrialForChild ? 'Nome completo do aluno' : 'Nome completo'}</span><input type="text" maxLength="150" placeholder={isTrialForChild ? 'Informe o nome do aluno' : 'Informe seu nome aqui'} value={trialForm.fullName} onChange={(event) => updateTrialForm('fullName', event.target.value)} /></label>
+                  <label className="trial-input-group"><span>E-mail</span><input type="email" maxLength="150" placeholder="Digite seu e-mail aqui" value={trialForm.email} onChange={(event) => updateTrialForm('email', event.target.value)} /></label>
+                  <label className="trial-input-group"><span>Telefone/WhatsApp</span><input type="tel" inputMode="numeric" minLength="8" maxLength="20" placeholder="(XX) XXXXX-XXXX" value={trialForm.phone} onChange={(event) => updateTrialForm('phone', formatPhoneNumber(event.target.value))} /></label>
+                  {isTrialForChild && (
+                    <div className="trial-responsible-fields">
+                      <h4>Dados do responsável</h4>
+                      <label className="trial-input-group"><span>Nome completo do responsável</span><input type="text" maxLength="150" placeholder="Informe o nome do responsável" value={trialForm.responsibleName} onChange={(event) => updateTrialForm('responsibleName', event.target.value)} /></label>
+                      <label className="trial-input-group"><span>Telefone/WhatsApp do responsável</span><input type="tel" inputMode="numeric" minLength="8" maxLength="20" placeholder="(XX) XXXXX-XXXX" value={trialForm.responsiblePhone} onChange={(event) => updateTrialForm('responsiblePhone', formatPhoneNumber(event.target.value))} /></label>
+                    </div>
+                  )}
                 </div>
-                {trialAttemptedStep === 4 && <p className="trial-modal__error" role="alert">Informe nome, e-mail válido e telefone para finalizar.</p>}
+                {trialAttemptedStep === 4 && <p className="trial-modal__error" role="alert">{isTrialForChild ? 'Informe os dados do aluno e do responsável para finalizar.' : 'Informe nome, e-mail válido e telefone para finalizar.'}</p>}
                 {trialSubmitError && <p className="trial-modal__error" role="alert">{trialSubmitError}</p>}
               </section>
             )}
 
             {trialStep === 5 && (
               <section className="trial-modal__success" aria-labelledby="trial-success-title">
-                <div className="trial-success__monogram" aria-hidden="true">KD</div>
+                <img className="trial-success__monogram" src={logoRosa} alt="Keli Dalpian, Studio de Dança" />
                 <h3 id="trial-success-title">Aula solicitada!</h3>
                 <p>Sua jornada começa aqui.</p>
                 <div className="trial-success__summary">
-                  <strong>{selectedTrialModality?.name}</strong>
-                  <span>{selectedTrialSchedule?.day} · {selectedTrialSchedule?.time}</span>
-                  <span>{selectedTrialSchedule?.room}</span>
+                  <strong>{selectedTrialSchedule?.nome}</strong>
+                  <span>{selectedTrialSchedule?.dia_semana} · {formatClassTime(selectedTrialSchedule?.horario)}</span>
                   <hr />
                   <span>Enviaremos a confirmação para seu e-mail/WhatsApp.</span>
                 </div>
@@ -761,11 +1007,62 @@ function App() {
             <footer className="trial-modal__actions">
               {trialStep > 1 && trialStep < 5 && <button className="trial-modal__back" type="button" onClick={() => { setTrialAttemptedStep(null); setTrialStep((current) => current - 1) }}>Voltar</button>}
               {trialStep < 5 ? (
-                <button className="trial-modal__continue" type="button" onClick={trialStep === 4 ? submitTrialRequest : advanceTrial} disabled={trialSubmitting}>{trialSubmitting ? 'Enviando...' : trialStep === 4 ? 'Finalizar' : 'Continuar'}</button>
+                <button className="trial-modal__continue" type="button" onClick={trialStep === 4 ? submitTrialRequest : advanceTrial} disabled={shouldDisableTrialContinue}>{trialSubmitting ? 'Enviando...' : trialStep === 4 ? 'Finalizar' : 'Continuar'}</button>
               ) : (
                 <button className="trial-modal__continue" type="button" onClick={() => { setTrialModalOpen(false); document.getElementById('inicio')?.scrollIntoView({ behavior: 'smooth' }) }}>Página inicial →</button>
               )}
             </footer>
+          </section>
+        </div>
+      )}
+
+      {activeTeacherModal && (
+        <div
+          className="teacher-profile-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setActiveTeacherModalSlug(null)
+          }}
+        >
+          <section
+            className="teacher-profile-modal"
+            ref={teacherModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="teacher-profile-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button className="teacher-profile-modal__close" type="button" aria-label="Fechar perfil da professora" onClick={() => setActiveTeacherModalSlug(null)}>
+              <span></span><span></span>
+            </button>
+
+            <div className="teacher-profile__portrait">
+              <img src={activeTeacherModal.image} alt="Retrato ilustrativo de uma professora de dança" />
+              <div className="teacher-profile__portrait-caption">
+                <strong>{activeTeacherModal.name}</strong>
+                <span>Diretora e professora</span>
+              </div>
+            </div>
+
+            <div className="teacher-profile__content">
+              <header className="teacher-profile__header">
+                <h2 id="teacher-profile-title">{activeTeacherModal.name}</h2>
+                <a className="teacher-profile__instagram" href="https://www.instagram.com/kelidalpianstudiodedanca/" target="_blank" rel="noreferrer" aria-label="Abrir Instagram do Studio Keli Dalpian em uma nova aba">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.7" r=".9" /></svg>
+                </a>
+              </header>
+              <p className="teacher-profile__introduction">{activeTeacherModal.introduction}</p>
+              <p className="teacher-profile__specialties">{activeTeacherModal.specialties}</p>
+
+              <div className="teacher-profile__responsibilities">
+                {activeTeacherModal.responsibilities.map((responsibility) => (
+                  <article key={responsibility.title}>
+                    <h3>{responsibility.title}</h3>
+                    <p>{responsibility.description}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
           </section>
         </div>
       )}

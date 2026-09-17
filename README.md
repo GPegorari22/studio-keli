@@ -61,10 +61,26 @@ npm run supabase:check
 
 ### Solicitações de aula experimental
 
-O modal de aula experimental grava uma solicitação na tabela
-`public.solicitacao_aula_experimental`. Antes de testar o envio, execute a migration
-[`20260917000000_create_solicitacao_aula_experimental.sql`](supabase/migrations/20260917000000_create_solicitacao_aula_experimental.sql)
+O modal de aula experimental grava os contatos em `public.possivel_aluno`. Ele usa
+somente os campos existentes nessa tabela: `nome`, `data_nascimento`, `telefone`,
+`email`, `horario_aula_experimental`, `origem`, `observacoes` e `status`.
+
+Antes de testar o envio público, execute a migration
+[`20260917000001_enable_public_trial_request_on_possivel_aluno.sql`](supabase/migrations/20260917000001_enable_public_trial_request_on_possivel_aluno.sql)
 no SQL Editor do Supabase ou pelo fluxo de migrations do projeto.
+
+Além da policy de RLS, essa migration concede somente `INSERT` e o uso da sequência
+de identidade ao formulário público; ela não libera leitura, atualização ou exclusão
+dos contatos.
+
+As turmas do passo de disponibilidade são carregadas de
+`public.turmas_disponiveis_inscricao`. A view calcula `vagas_disponiveis` a cada
+consulta a partir de `turma.capacidade - COUNT(matricula ativa)` e não retorna
+turmas lotadas. Ao selecionar uma turma, o formulário grava o `id_turma` existente
+em `possivel_aluno`; a data da aula continua nula até a confirmação da equipe.
+
+Para habilitar a lista, execute também a migration
+[`20260917000002_create_turmas_disponiveis_inscricao_view.sql`](supabase/migrations/20260917000002_create_turmas_disponiveis_inscricao_view.sql).
 
 A policy criada permite somente `INSERT` para visitantes e usuários autenticados.
 Não há acesso público de leitura, atualização ou exclusão dos dados de contato. A
