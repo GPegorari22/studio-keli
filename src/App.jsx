@@ -19,8 +19,6 @@ import belaFera from './assets/bela-fera.png'
 import secaoEspetaculos from './assets/secao-espetaculos.png'
 import professoraGenerica from './assets/professora-generica.png'
 import './App.css'
-import AOS from 'aos'
-import 'aos/dist/aos.css'
 import inscricao from './assets/inscrição.png'
 import { supabase } from './lib/supabase.js'
 
@@ -241,12 +239,23 @@ function App() {
   }, [])
 
   useEffect(() => {
-    AOS.init({
-      duration: 800,
-      easing: 'ease-out-cubic',
-      once: true,
-      offset: 90,
-    })
+    const revealElements = document.querySelectorAll('[data-reveal]')
+
+    if (!('IntersectionObserver' in window)) {
+      revealElements.forEach((element) => element.classList.add('is-revealed'))
+      return undefined
+    }
+
+    const revealObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return
+        entry.target.classList.add('is-revealed')
+        observer.unobserve(entry.target)
+      })
+    }, { threshold: 0.14, rootMargin: '0px 0px -8% 0px' })
+
+    revealElements.forEach((element) => revealObserver.observe(element))
+    return () => revealObserver.disconnect()
   }, [])
 
   const openTrialModal = () => {
@@ -602,7 +611,7 @@ function App() {
         className="modalities-section"
         id="modalidades"
         aria-labelledby="modalities-title"
-        data-aos="fade-up"
+        data-reveal
       >
         <div className="modalities-heading">
           <h1 id="modalities-title">Modalidades</h1>
@@ -633,7 +642,7 @@ function App() {
                   }
                 }}
               >
-                <div className="modality-card">
+                <div className="modality-card" data-reveal>
                   <div className="modality-art">
                     <img src={modality.image} alt="" />
                   </div>
@@ -650,7 +659,7 @@ function App() {
           ></button>
         </div>
       </section>
-      <section className="studio-section" id="studio" aria-labelledby="studio-title" data-aos="fade-up">
+      <section className="studio-section" id="studio" aria-labelledby="studio-title" data-reveal>
         <div className="studio-inner">
           <div className="studio-media">
             <div className="studio-card">
@@ -683,7 +692,7 @@ function App() {
         </div>
       </section>
 
-      <section className="teachers-section" id="equipe" aria-labelledby="teachers-title" data-aos="fade-up">
+      <section className="teachers-section" id="equipe" aria-labelledby="teachers-title" data-reveal>
         <div className="teachers-inner">
           <div className="teachers-heading">
             <h2 id="teachers-title">PROFESSORAS</h2>
@@ -704,7 +713,7 @@ function App() {
               {displayedTeachers.map((teacher) => {
                 const isModalAvailable = Boolean(teacherDetails[teacher.slug])
                 const teacherCard = (
-                  <div className="teacher-card">
+                    <div className="teacher-card" data-reveal>
                     <div className="teacher-art">
                       <img src={teacher.image} alt="" />
                     </div>
@@ -742,7 +751,7 @@ function App() {
         </div>
       </section>
       <img src={separacaoPagina} alt="" className="separacao-pagina" />
-      <section className="shows-section" id="espetaculos" aria-labelledby="shows-title" data-aos="fade-up">
+      <section className="shows-section" id="espetaculos" aria-labelledby="shows-title" data-reveal>
         <div className="shows-inner">
           <h2 id="shows-title">ESPETÁCULOS</h2>
           <p className="shows-lead">Quando a dança ganha <strong>palco</strong>.</p>
@@ -764,7 +773,7 @@ function App() {
                   href={`#${show.slug}`}
                   className={`show ${show.featured ? 'show--featured' : ''} show-${show.slug}`}
                   aria-label={`Conheça ${show.name}`}>
-                  <div className="show-card">
+                  <div className="show-card" data-reveal>
                       <div className="show-art">
                         <img src={show.image} alt={show.name} />
                       </div>
@@ -787,7 +796,7 @@ function App() {
         </div>
       </section>
 
-      <section className="inscricao-section" id="inscricao" aria-labelledby="inscricao-title" data-aos="fade-up">
+      <section className="inscricao-section" id="inscricao" aria-labelledby="inscricao-title" data-reveal>
         <div className="inscricao-inner">
           <div className="inscricao-art" aria-hidden="true">
             <img src={inscricao} alt="Inscrição" />

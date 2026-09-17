@@ -240,6 +240,11 @@
   50% { transform: translateX(-50%) translateY(5px); }
 }
 
+@keyframes section-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .modalities-section {
   position: relative;
   min-height: 610px;
@@ -249,6 +254,7 @@
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
+  animation: section-enter 700ms ease-out 240ms both;
 }
 
 .modalities-heading {
@@ -508,6 +514,7 @@
   padding: 48px 6vw 80px;
   background: url('./assets/secao-espetaculos.png') center center / cover no-repeat;
   background-color: var(--off-white);
+  animation: section-enter 700ms ease-out 420ms both;
 }
 
 .shows-inner {
@@ -686,6 +693,7 @@
   padding: 48px 6vw 80px 6vw;
   background: none;
   position: relative;
+  animation: section-enter 700ms ease-out 560ms both;
 }
 
 .backstage-inner {
@@ -807,6 +815,7 @@
   padding: 72px 6vw 96px;
   background: var(--off-white);
   margin-bottom: 70px;
+  animation: section-enter 700ms ease-out 700ms both;
 }
 
 .inscricao-inner {
@@ -1088,6 +1097,7 @@
 .studio-section {
   padding: 48px 6vw 64px;
   background: #ffffff;
+  animation: section-enter 700ms ease-out 280ms both;
 }
 
 .studio-inner {
@@ -1447,6 +1457,7 @@
   position: relative;
   padding: 32px 6vw 60px;
   background: var(--soft-pink) url('./assets/fundo-modalidades.png') center / cover no-repeat;
+  animation: section-enter 700ms ease-out 380ms both;
 }
 
 .teachers-inner {
@@ -3142,15 +3153,4 @@ body.has-modal-open {
   .trial-modality-option { min-height: 205px; }
   .trial-modal__back { position: static; margin-right: 12px; }
   .trial-modal__actions { align-items: center; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    animation-duration: .01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: .01ms !important;
-  }
 }
