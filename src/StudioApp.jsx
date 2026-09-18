@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'react'
 import App from './App.jsx'
 import AuthPage from './components/AuthPage.jsx'
+import StudentDashboard from './components/StudentDashboard.jsx'
+import StudentTransition from './components/StudentTransition.jsx'
 import { supabase } from './lib/supabase.js'
 
 const authRoutes = new Set(['entrar', 'primeiro-acesso', 'recuperar-senha', 'minha-conta'])
+const dashboardRoutes = new Set(['transicao-aluno', 'aluno'])
 
 function readLocation() {
   const url = new URL(window.location.href)
   const hash = new URLSearchParams(url.hash.slice(1))
   const callback = url.searchParams.get('auth')
   const route = authRoutes.has(callback) ? callback : url.hash.slice(1)
+  const resolvedRoute = authRoutes.has(route) ? route : dashboardRoutes.has(route) ? route : 'home'
   return {
-    route: authRoutes.has(route) ? route : 'home',
+    route: resolvedRoute,
     callback: Boolean(callback),
     error: hash.get('error_code') || url.searchParams.get('error_code') || (hash.has('error') ? 'access_denied' : ''),
   }
@@ -68,6 +72,8 @@ export default function StudioApp() {
   }
 
   if (location.route === 'home') return <App session={session} />
+  if (location.route === 'transicao-aluno') return <StudentTransition navigate={navigate} />
+  if (location.route === 'aluno') return <StudentDashboard session={session} navigate={navigate} />
 
   return (
     <AuthPage

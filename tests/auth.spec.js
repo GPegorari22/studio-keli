@@ -107,10 +107,11 @@ test('primeiro acesso envia link e só salva senha depois da confirmação', asy
   expect(requests.filter((request) => request.endpoint === 'user' && request.method === 'PUT')).toHaveLength(0)
   await page.getByLabel('Confirmar senha', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Entrar', exact: true }).last().click()
-  await expect(page.getByRole('heading', { name: 'Sistema Studio Keli Dalpian' })).toBeVisible()
+  await expect(page.getByText('Preparando seu espaço de dança')).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Olá,|perfil do aluno/i })).toBeVisible({ timeout: 10000 })
   expect(requests.find((request) => request.endpoint === 'user' && request.method === 'PUT').body).toMatchObject({ password })
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'Sistema Studio Keli Dalpian' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Olá,/i })).toBeVisible()
 })
 
 test('não libera criação de senha antes da confirmação pelo link', async ({ page }) => {
@@ -150,7 +151,8 @@ test('recuperação envia link e atualiza senha após o retorno', async ({ page 
   await page.getByLabel('Senha', { exact: true }).fill(password)
   await page.getByLabel('Confirmar senha', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Salvar senha' }).click()
-  await expect(page.getByRole('heading', { name: 'Sistema Studio Keli Dalpian' })).toBeVisible()
+  await expect(page.getByText('Preparando seu espaço de dança')).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Olá,/i })).toBeVisible({ timeout: 10000 })
 })
 
 test('link de recuperação abre criação de senha e link expirado mostra erro', async ({ page }) => {

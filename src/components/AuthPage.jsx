@@ -155,6 +155,7 @@ export default function AuthPage({ mode, session, loading, callback, initialErro
         savePendingAccess(null)
         setPassword('')
         setCompleted(true)
+        navigate('transicao-aluno')
       })
     } else if (currentStep === 1) {
       requestConfirmationLink()
@@ -173,7 +174,7 @@ export default function AuthPage({ mode, session, loading, callback, initialErro
         if (!mounted.current) return
         setPassword('')
         setConfirmation('')
-        navigate('minha-conta')
+        navigate('transicao-aluno')
       })
     }
   }
