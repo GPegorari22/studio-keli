@@ -176,7 +176,7 @@ const formatPhoneNumber = (value) => {
   return `${countryCode}(${localNumber.slice(0, 2)}) ${localNumber.slice(2, 7)}-${localNumber.slice(7, 11)}`
 }
 
-function App() {
+function App({ session }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [headerIsCompact, setHeaderIsCompact] = useState(false)
   const [activeModalSlug, setActiveModalSlug] = useState(null)
@@ -586,8 +586,8 @@ function App() {
             ))}
           </nav>
 
-          <a className="login-button" href="#entrar">
-            Entrar
+          <a className="login-button" href={session ? '#minha-conta' : '#entrar'}>
+            {session ? 'Minha conta' : 'Entrar'}
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M13 5h5v14h-5" />
               <path d="m10 8 4 4-4 4" />
@@ -705,9 +705,7 @@ function App() {
               type="button"
               aria-label="Professor anterior"
               onClick={() => changeTeacher(-1)}
-            >
-              ‹
-            </button>
+            ></button>
 
             <div className="teachers-list">
               {displayedTeachers.map((teacher) => {
@@ -744,9 +742,7 @@ function App() {
               type="button"
               aria-label="Próxima professora"
               onClick={() => changeTeacher(1)}
-            >
-              ›
-            </button>
+            ></button>
           </div>
         </div>
       </section>
@@ -762,9 +758,7 @@ function App() {
               type="button"
               aria-label="Espetáculo anterior"
               onClick={() => changeShow(-1)}
-            >
-              ‹
-            </button>
+            ></button>
 
             <div className="shows-list">
               {displayedShows.map((show) => (
@@ -789,9 +783,7 @@ function App() {
               type="button"
               aria-label="Próximo espetáculo"
               onClick={() => changeShow(1)}
-            >
-              ›
-            </button>
+            ></button>
           </div>
         </div>
       </section>
