@@ -555,47 +555,47 @@ function App({ session }) {
 
   return (
     <main className="home-page">
+      <header className={`site-header ${headerIsCompact ? 'is-compact' : ''}`}>
+        <a className="brand" href="#inicio" aria-label="Keli Dalpian — início">
+          <img src={logoRosa} alt="Keli Dalpian, Studio de Dança" />
+        </a>
+
+        <button
+          className="menu-toggle"
+          type="button"
+          aria-label="Abrir menu"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+
+        <nav className={menuOpen ? 'main-navigation is-open' : 'main-navigation'} aria-label="Navegação principal">
+          {navigation.map((item) => (
+            <a href={`#${item.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`} key={item}>
+              {item}
+              {item === 'Modalidades' && (
+                <svg viewBox="0 0 12 8" aria-hidden="true">
+                  <path d="m1 1.25 5 5 5-5" />
+                </svg>
+              )}
+            </a>
+          ))}
+        </nav>
+
+        <a className="login-button" href={session ? '#aluno' : '#entrar'}>
+          {session ? 'Minha conta' : 'Entrar'}
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M13 5h5v14h-5" />
+            <path d="m10 8 4 4-4 4" />
+            <path d="M14 12H4" />
+          </svg>
+        </a>
+      </header>
+
       <section className="hero-section" aria-labelledby="home-title">
-        <header className={`site-header ${headerIsCompact ? 'is-compact' : ''}`}>
-          <a className="brand" href="#inicio" aria-label="Keli Dalpian — início">
-            <img src={logoRosa} alt="Keli Dalpian, Studio de Dança" />
-          </a>
-
-          <button
-            className="menu-toggle"
-            type="button"
-            aria-label="Abrir menu"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((open) => !open)}
-          >
-            <span></span>
-            <span></span>
-            <span></span>
-          </button>
-
-          <nav className={menuOpen ? 'main-navigation is-open' : 'main-navigation'} aria-label="Navegação principal">
-            {navigation.map((item) => (
-              <a href={`#${item.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`} key={item}>
-                {item}
-                {item === 'Modalidades' && (
-                  <svg viewBox="0 0 12 8" aria-hidden="true">
-                    <path d="m1 1.25 5 5 5-5" />
-                  </svg>
-                )}
-              </a>
-            ))}
-          </nav>
-
-          <a className="login-button" href={session ? '#aluno' : '#entrar'}>
-            {session ? 'Minha conta' : 'Entrar'}
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M13 5h5v14h-5" />
-              <path d="m10 8 4 4-4 4" />
-              <path d="M14 12H4" />
-            </svg>
-          </a>
-        </header>
-
         <div className="hero-banner" id="inicio">
           <img src={bannerInicio} alt="Dançar é transformar movimento em história" />
         </div>

@@ -126,6 +126,11 @@
   animation: auth-appear 350ms ease both;
 }
 
+/* Contorno orgânico: curvas assimétricas no painel colorido, sem cantos rígidos. */
+.auth-art {
+  border-radius: 0 18% 13% 0 / 0 11% 15% 0;
+}
+
 .auth-heading {
   margin-bottom: 38px;
   text-align: center;
@@ -461,4 +466,8 @@
 @media (prefers-reduced-motion: reduce) {
   .auth-panel__inner, .auth-success__content { animation: none; }
   .auth-submit { transition: none; }
+}
+
+@media (max-width: 760px) {
+  .auth-art { border-radius: 0 0 14% 9% / 0 0 12% 8%; }
 }
