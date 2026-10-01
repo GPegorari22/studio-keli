@@ -586,7 +586,7 @@ function App({ session }) {
             ))}
           </nav>
 
-          <a className="login-button" href={session ? '#minha-conta' : '#entrar'}>
+          <a className="login-button" href={session ? '#aluno' : '#entrar'}>
             {session ? 'Minha conta' : 'Entrar'}
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M13 5h5v14h-5" />

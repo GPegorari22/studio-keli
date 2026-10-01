@@ -11,6 +11,11 @@ import logoutIcon from '../assets/student-icon-logout.png'
 import bellIcon from '../assets/student-icon-bell.png'
 import agendaCalendarIcon from '../assets/icone-calendario-rosa.png'
 import agendaHomeIcon from '../assets/icone-home-branco.png'
+import evolutionPageIcon from '../assets/icone-evolucao-rosa.png'
+import attendancePageIcon from '../assets/icone-frequencia-rosa.png'
+import bannerProdutos from '../assets/banner-produtos.png'
+import bannerProdutosWide from '../assets/banner-produtos-wide.png'
+import bannerOfertas from '../assets/banner-ofertas.png'
 import { supabase } from '../lib/supabase.js'
 import './StudentDashboard.css'
 
@@ -23,6 +28,9 @@ const defaultDashboard = {
   frequencia: { presencas: 0, faltas: 0, percentual: null },
   criterios: [],
   aulas: [],
+  historico_frequencia: [],
+  avaliacao: null,
+  financeiro: { proximo_vencimento: null, total_pago_ano: 0, mensalidades: [] },
 }
 const icons = { profile: profileIcon, home: homeIcon, calendar: calendarIcon, dance: danceIcon, chart: chartIcon, bag: bagIcon, logout: logoutIcon, bell: bellIcon }
 const criterionDescriptions = {
@@ -123,17 +131,18 @@ function ProgressChart({ criteria }) {
   )
 }
 
-function Evolution({ criteria, studentName }) {
+function Evolution({ criteria, studentName, evaluation }) {
+  const evaluationDate = evaluation?.data ? shortDate.format(toDate(evaluation.data)) : 'Sem registro'
   return (
     <section className="student-evolution-page" id="evolucao" aria-label="Sua evolução" tabIndex={-1}>
       <header className="student-evolution-page__header">
         <div>
-          <h2>Minha Evolução</h2>
+          <h2><img className="student-page-title__icon" src={evolutionPageIcon} alt="" aria-hidden="true" />Minha Evolução</h2>
           <p>Acompanhe seu desenvolvimento e descubra até onde seus movimentos podem chegar.</p>
         </div>
         <div className="student-evolution-page__status">
-          <span>Última avaliação: 05/09/2026</span>
-          <span>Próxima avaliação: 05/10/2026</span>
+          <span>Última avaliação: {evaluationDate}</span>
+          <span>{evaluation?.metas || 'A próxima avaliação será definida pelo Studio.'}</span>
         </div>
       </header>
       <div className="student-evolution-page__overview">
@@ -155,6 +164,101 @@ function Evolution({ criteria, studentName }) {
         <div className="student-evolution-page__feedback-avatar" aria-hidden="true">{studentName.slice(0, 1)}</div>
         <div><h3 id="feedback-title">Feedback</h3><p>Você apresentou uma evolução muito bonita neste período. Sua técnica está mais segura e sua presença em sala demonstra cada vez mais confiança. Continue trabalhando sua flexibilidade e atenção aos detalhes dos movimentos.</p></div>
       </section>
+    </section>
+  )
+}
+
+function AttendancePage({ attendance, attendanceHistory, financial }) {
+  const percent = attendance?.percentual == null ? null : Math.max(0, Math.min(100, Number(attendance.percentual) || 0))
+  const presentCount = Number(attendance?.presencas) || 0
+  const absenceCount = Number(attendance?.faltas) || 0
+  const history = (attendanceHistory || []).slice(0, 8)
+  const formatMoney = (value) => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  const nextDue = financial?.proximo_vencimento
+  const monthlyPayments = financial?.mensalidades || []
+
+  return (
+    <section className="student-attendance-page" id="frequencia" aria-label="Minha Frequência" tabIndex={-1}>
+      <header className="student-attendance-page__header">
+        <div><h2><img className="student-page-title__icon" src={attendancePageIcon} alt="" aria-hidden="true" />Minha Frequência</h2><p>Acompanhe sua presença e mantenha seu ritmo.</p></div>
+        <Icon name="bell" />
+      </header>
+      <div className="student-attendance-page__summary">
+        <section className="student-attendance-page__gauge" aria-label={percent == null ? 'Sem registros de frequência' : `${percent}% de frequência`}>
+          <AttendanceChart attendance={attendance} />
+          <div className="student-attendance-page__legend"><span><i className="is-presence" />PRESENÇA</span><span><i className="is-absence" />FALTAS</span></div>
+        </section>
+        <div className="student-attendance-page__counters"><strong>{presentCount} aulas presentes</strong><strong>{absenceCount} faltas</strong><strong>{Number(attendance?.justificadas) || 0} justificadas</strong></div>
+      </div>
+      <section className="student-attendance-page__history" aria-labelledby="attendance-history-title">
+        <header><div><h3 id="attendance-history-title">Histórico de presença</h3><p>Confira seu histórico de aulas e mantenha sua frequência em dia.</p></div><div className="student-attendance-page__filters"><button type="button">Todas as aulas</button><button type="button">Todos os status</button></div></header>
+        <div className="student-attendance-page__table" role="table" aria-label="Histórico de presença">
+          <div className="student-attendance-page__row student-attendance-page__row--head" role="row"><span>DATA</span><span>AULA</span><span>PROFESSORA</span><span>SITUAÇÃO</span></div>
+          {history.length ? history.map((lesson, index) => <div className="student-attendance-page__row" role="row" key={`${lesson.id_aula}-${index}`}><span>{lesson.data ? shortDate.format(toDate(lesson.data)) : '--/--'}</span><span>{lesson.modalidade || 'Aula'}</span><span>{lesson.professora || 'Studio Keli'}</span><span className={lesson.presente ? 'is-present' : 'is-absent'}>{lesson.presente ? 'Presente' : 'Faltou'}</span></div>) : <p className="student-empty-chart">Seu histórico aparecerá após o registro das primeiras aulas.</p>}
+        </div>
+        <div className="student-attendance-page__stats"><span>Frequência atual <strong>{percent == null ? '—' : `${percent}%`}</strong></span><span>Presenças <strong>{presentCount}</strong></span><span>Faltas <strong>{absenceCount}</strong></span><span>Justificadas <strong>{Number(attendance?.justificadas) || 0}</strong></span></div>
+      </section>
+      <section className="student-finance" aria-labelledby="finance-title">
+        <header><h3 id="finance-title">Meu Financeiro</h3><p>Acompanhe suas mensalidades e pagamentos em um só lugar.</p></header>
+        <div className="student-finance__highlights"><div><strong>PRÓXIMO VENCIMENTO</strong><span>{nextDue ? `${nextDue.vencimento} · ${formatMoney(nextDue.valor)}` : 'Nenhum vencimento pendente'}</span></div><div><strong>TOTAL PAGO NO ANO</strong><span>{formatMoney(financial?.total_pago_ano)}</span></div></div>
+        <div className="student-finance__body"><div className="student-finance__current"><span>{nextDue?.competencia || 'Sem mensalidade em aberto'}</span><strong>{nextDue ? formatMoney(nextDue.valor) : 'R$ 0,00'}</strong><button type="button">DETALHES</button></div><div className="student-finance__months"><strong>Histórico de mensalidades</strong>{monthlyPayments.length ? monthlyPayments.slice(0, 3).map((monthlyPayment) => <span key={`${monthlyPayment.competencia}-${monthlyPayment.vencimento}`}>{monthlyPayment.competencia}<small>{monthlyPayment.status} · {monthlyPayment.vencimento}</small></span>) : <span>Nenhuma mensalidade registrada</span>}</div></div>
+      </section>
+    </section>
+  )
+}
+
+function StorePage() {
+  const [products, setProducts] = useState([])
+  const [categories, setCategories] = useState([])
+  const [selectedCategory, setSelectedCategory] = useState(null)
+  const [selectedProduct, setSelectedProduct] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let mounted = true
+    Promise.all([
+      supabase.from('categoria_produto').select('id_categoria,nome,descricao').eq('status', 'ativo').order('nome'),
+      supabase.from('produto').select('id_produto,nome,descricao,preco,estoque,id_categoria,status,imagem_produto(caminho,principal,ordem)').eq('status', 'ativo').order('nome'),
+    ]).then(([categoryResult, productResult]) => {
+      if (!mounted) return
+      setCategories(categoryResult.data || [])
+      setProducts(productResult.data || [])
+      setLoading(false)
+    }).catch(() => { if (mounted) setLoading(false) })
+    return () => { mounted = false }
+  }, [])
+
+  const visibleProducts = selectedCategory == null ? products : products.filter((product) => product.id_categoria === selectedCategory)
+  const imageFor = (product) => product.imagem_produto?.slice().sort((first, second) => Number(second.principal) - Number(first.principal) || first.ordem - second.ordem)[0]?.caminho || bannerProdutos
+  const money = (value) => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
+  return (
+    <section className="store-page" aria-label="Loja" tabIndex={-1}>
+      <header className="store-page__header">
+        <div><h1>Loja</h1><p>Produtos selecionados para acompanhar sua dança.</p></div>
+        <Icon name="bell" />
+      </header>
+      <div className="store-page__hero"><img src={bannerProdutosWide} alt="Seu movimento também veste você. Produtos selecionados para acompanhar sua jornada no Studio." /></div>
+      <div className="store-page__categories" aria-label="Categorias de produtos">
+        <button type="button" className={selectedCategory == null ? 'is-selected' : undefined} onClick={() => setSelectedCategory(null)}>Todos</button>
+        {categories.map((category) => <button type="button" className={selectedCategory === category.id_categoria ? 'is-selected' : undefined} key={category.id_categoria} onClick={() => setSelectedCategory(category.id_categoria)}>{category.nome}</button>)}
+      </div>
+      <section className="store-page__catalog" aria-live="polite">
+        <h2>{selectedCategory == null ? 'Recomendados' : categories.find((category) => category.id_categoria === selectedCategory)?.nome}</h2>
+        {loading ? <p>Carregando produtos...</p> : visibleProducts.length ? <div className="store-page__products">{visibleProducts.map((product) => <button type="button" className="store-page__product" key={product.id_produto} onClick={() => setSelectedProduct(product)}><img src={imageFor(product)} alt="" /><strong>{product.nome}</strong><span>{money(product.preco)}</span><small>{product.estoque > 0 ? 'Adicionar ao carrinho' : 'Indisponível'}</small></button>)}</div> : <p>Nenhum produto disponível no momento.</p>}
+      </section>
+      <section className="store-page__pickup" aria-label="Ofertas e retirada de pedidos">
+        <img className="store-page__offers" src={bannerOfertas} alt="Ofertas do Studio Keli Dalpian" />
+        <div className="store-page__map-card">
+          <iframe title="Localização do Studio Keli Dalpian" src="https://www.google.com/maps?q=Rua+25+de+Mar%C3%A7o%2C+27%2C+Monte+Alto+-+SP&output=embed" loading="lazy"></iframe>
+          <div className="store-page__pickup-copy">
+            <h2>Seu pedido, pertinho de você.</h2>
+            <p>As compras realizadas pela loja podem ser retiradas diretamente no Studio Keli Dalpian.</p>
+            <p>Assim que seu pedido estiver pronto, você receberá uma notificação na sua área do aluno.</p>
+          </div>
+        </div>
+      </section>
+      {selectedProduct && <div className="store-page__modal-backdrop" role="presentation" onClick={() => setSelectedProduct(null)}><section className="store-page__modal" role="dialog" aria-modal="true" aria-label={selectedProduct.nome} onClick={(event) => event.stopPropagation()}><button type="button" className="store-page__modal-close" aria-label="Fechar produto" onClick={() => setSelectedProduct(null)}>×</button><img src={imageFor(selectedProduct)} alt="" /><div><h2>{selectedProduct.nome}</h2><p>{selectedProduct.descricao || 'Produto selecionado pelo Studio para sua rotina de dança.'}</p><strong>{money(selectedProduct.preco)}</strong><button type="button" disabled={!selectedProduct.estoque}>{selectedProduct.estoque ? 'Adicionar ao carrinho' : 'Produto indisponível'}</button></div></section></div>}
     </section>
   )
 }
@@ -297,6 +401,9 @@ export default function StudentDashboard({ session, navigate }) {
   const lessons = dashboard?.aulas || defaultDashboard.aulas
   const attendance = dashboard?.frequencia || defaultDashboard.frequencia
   const criteria = dashboard?.criterios || defaultDashboard.criterios
+  const attendanceHistory = dashboard?.historico_frequencia || defaultDashboard.historico_frequencia
+  const evaluation = dashboard?.avaliacao || defaultDashboard.avaliacao
+  const financial = dashboard?.financeiro || defaultDashboard.financeiro
   const dateLabel = ptDate.format(today)
   const studentName = firstName(dashboard?.aluno?.nome) || 'Aluno'
   const nextLessonIsToday = nextLesson && toDate(nextLesson.data)?.toDateString() === today.toDateString()
@@ -325,7 +432,7 @@ export default function StudentDashboard({ session, navigate }) {
   // Dashboard links switch views inside the fixed student shell.
   const scrollToSection = (event, id) => {
     event.preventDefault()
-    setActiveView(id === 'calendario' ? 'agenda' : id === 'evolucao' ? 'evolution' : 'home')
+    setActiveView(id === 'calendario' ? 'agenda' : id === 'evolucao' ? 'evolution' : id === 'frequencia' ? 'attendance' : id === 'loja' ? 'store' : 'home')
   }
   const lessonDate = toDate(nextLesson?.data)
   const lessonTitle = nextLesson?.modalidade?.includes(':') ? nextLesson.modalidade : `${lessonDate ? new Intl.DateTimeFormat('pt-BR', { weekday: 'long' }).format(lessonDate).toLocaleUpperCase('pt-BR') + ': ' : ''}${nextLesson?.modalidade || 'Aula de dança'}`
@@ -338,13 +445,14 @@ export default function StudentDashboard({ session, navigate }) {
           {[
             ['home', 'visao-geral', 'Início'],
             ['calendar', 'calendario', 'Calendário'],
-            ['dance', 'proxima-aula', 'Aulas'],
+            ['dance', 'frequencia', 'Aulas'],
             ['chart', 'evolucao', 'Evolução'],
             ['bag', 'loja', 'Loja'],
           ].map(([icon, id, label]) => {
-            const targetView = icon === 'calendar' ? 'agenda' : icon === 'chart' ? 'evolution' : 'home'
-            const isActive = (icon === 'home' && activeView === 'home') || (icon === 'calendar' && activeView === 'agenda') || (icon === 'chart' && activeView === 'evolution')
-            return <a key={id} className={isActive ? 'is-active' : undefined} href={`#${id}`} onClick={(event) => { event.preventDefault(); setActiveView(targetView) }} aria-current={isActive ? 'page' : undefined} title={label}><Icon name={icon} source={activeView === 'agenda' && icon === 'home' ? agendaHomeIcon : activeView === 'agenda' && icon === 'calendar' ? agendaCalendarIcon : undefined} /><span>{label}</span></a>
+            const targetView = icon === 'calendar' ? 'agenda' : icon === 'chart' ? 'evolution' : icon === 'dance' ? 'attendance' : icon === 'bag' ? 'store' : 'home'
+            const isActive = (icon === 'home' && activeView === 'home') || (icon === 'calendar' && activeView === 'agenda') || (icon === 'chart' && activeView === 'evolution') || (icon === 'dance' && activeView === 'attendance') || (icon === 'bag' && activeView === 'store')
+            const activeSource = activeView === 'agenda' && icon === 'home' ? agendaHomeIcon : activeView === 'agenda' && icon === 'calendar' ? agendaCalendarIcon : activeView === 'evolution' && icon === 'chart' ? evolutionPageIcon : activeView === 'attendance' && icon === 'dance' ? attendancePageIcon : undefined
+            return <a key={id} className={isActive ? 'is-active' : undefined} href={`#${id}`} onClick={(event) => { event.preventDefault(); setActiveView(targetView) }} aria-current={isActive ? 'page' : undefined} title={label}><Icon name={icon} source={activeSource} /><span>{label}</span></a>
           })}
         </nav>
         <button className="student-sidebar__logout" type="button" onClick={signOut} title="Sair"><Icon name="logout" /><span>Sair</span></button>
@@ -353,7 +461,7 @@ export default function StudentDashboard({ session, navigate }) {
       <section className="student-content" id="visao-geral" aria-label="Perfil do aluno" tabIndex={-1}>
         <img className="student-content__ribbon" src={studentRibbon} alt="" aria-hidden="true" />
         <div className="student-workspace">
-          <header className="student-topbar">
+          {activeView !== 'store' && <header className="student-topbar">
             <h1>Olá, {studentName}!</h1>
             <div className="student-topbar__right">
               <span className="student-topbar__date"><Icon name="calendar" />{dateLabel}</span>
@@ -362,7 +470,7 @@ export default function StudentDashboard({ session, navigate }) {
                 {notificationsOpen && <div className="student-notifications__panel" id="student-notifications" role="status">{nextLesson ? `Sua próxima aula será em ${shortDate.format(lessonDate)}, às ${time(nextLesson.horario_inicio)}.` : 'Nenhuma aula agendada no momento.'}</div>}
               </div>
             </div>
-          </header>
+          </header>}
 
           {loading && <div className="student-state" role="status">Carregando seu perfil…</div>}
           {!loading && error && <div className="student-state student-state--error" role="alert"><p>{error}</p><button type="button" onClick={() => { setLoading(true); loadDashboard() }}>Tentar novamente</button></div>}
@@ -399,7 +507,7 @@ export default function StudentDashboard({ session, navigate }) {
             </div>
             {!criteria.length && <p className="student-empty-chart">Sua evolução aparecerá aqui após a primeira avaliação.</p>}
 
-          </> : activeView === 'agenda' ? <Agenda scheduledClasses={lessons} today={today} /> : <Evolution criteria={criteria} studentName={studentName} />}
+          </> : activeView === 'agenda' ? <Agenda scheduledClasses={lessons} today={today} /> : activeView === 'evolution' ? <Evolution criteria={criteria} studentName={studentName} evaluation={evaluation} /> : activeView === 'attendance' ? <AttendancePage attendance={attendance} attendanceHistory={attendanceHistory} financial={financial} /> : <StorePage />}
         </div>
         <footer className="student-footer">Studio Keli Dalpian <span>|</span> © {today.getFullYear()}</footer>
       </section>

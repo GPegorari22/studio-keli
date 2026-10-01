@@ -22,8 +22,15 @@ test('menu mantém o aluno no painel e calendário permite navegar entre meses',
   for (const name of ['Calendário', 'Aulas', 'Evolução', 'Loja', 'Início']) {
     await page.getByRole('link', { name, exact: true }).click()
     await expect(page).toHaveURL(/#aluno$/)
-    await expect(page.getByRole('heading', { name: 'Olá, Letícia!' })).toBeAttached()
-    if (name === 'Evolução') await expect(page.getByRole('heading', { name: 'Minha Evolução' })).toBeVisible()
+    if (name === 'Loja') {
+      await expect(page.getByRole('region', { name: 'Loja' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Olá, Letícia!' })).toHaveCount(0)
+      await page.getByRole('link', { name: 'Início', exact: true }).click()
+      await expect(page.getByRole('heading', { name: 'Olá, Letícia!' })).toBeVisible()
+    } else {
+      await expect(page.getByRole('heading', { name: 'Olá, Letícia!' })).toBeAttached()
+      if (name === 'Evolução') await expect(page.getByRole('heading', { name: 'Minha Evolução' })).toBeVisible()
+    }
   }
   await page.getByRole('button', { name: 'Próximo mês' }).click()
   await expect(page.getByRole('region', { name: 'Calendário de outubro 2026' })).toBeVisible()

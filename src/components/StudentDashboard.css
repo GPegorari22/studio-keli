@@ -97,6 +97,10 @@
   background: var(--student-surface);
 }
 
+.student-sidebar nav a:not(.is-active) .student-icon {
+  filter: brightness(0) invert(1);
+}
+
 .student-sidebar nav .student-icon {
   width: calc(20 * var(--student-unit));
   height: calc(23 * var(--student-unit));
@@ -673,6 +677,15 @@
   font-family: Georgia, 'Times New Roman', serif;
 }
 
+.student-page-title__icon {
+  display: inline-block;
+  width: calc(18 * var(--student-unit));
+  height: calc(18 * var(--student-unit));
+  margin-right: calc(8 * var(--student-unit));
+  object-fit: contain;
+  vertical-align: -10%;
+}
+
 .student-evolution-page h2 {
   font-size: calc(20 * var(--student-unit));
 }
@@ -784,6 +797,332 @@
   font-size: calc(7 * var(--student-unit));
   line-height: 1.4;
 }
+
+.student-attendance-page {
+  margin-top: calc(24 * var(--student-unit));
+  padding: calc(18 * var(--student-unit));
+  border-radius: calc(14 * var(--student-unit));
+  background: #fff;
+  box-shadow: 0 calc(2 * var(--student-unit)) calc(5 * var(--student-unit)) #0f1c2d12;
+}
+
+.student-attendance-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: calc(16 * var(--student-unit));
+}
+
+.student-attendance-page h2,
+.student-attendance-page h3 {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.student-attendance-page h2 {
+  font-size: calc(20 * var(--student-unit));
+}
+
+.student-attendance-page h3 {
+  font-size: calc(13 * var(--student-unit));
+}
+
+.student-attendance-page p {
+  margin: calc(5 * var(--student-unit)) 0 0;
+  font-size: calc(7 * var(--student-unit));
+}
+
+.student-attendance-page__header>.student-icon {
+  width: calc(14 * var(--student-unit));
+  height: calc(14 * var(--student-unit));
+}
+
+.student-attendance-page__summary {
+  display: grid;
+  grid-template-columns: minmax(calc(150 * var(--student-unit)), .75fr) 1fr;
+  align-items: center;
+  gap: calc(18 * var(--student-unit));
+  margin-top: calc(18 * var(--student-unit));
+}
+
+.student-attendance-page__gauge {
+  padding: calc(8 * var(--student-unit));
+  border-radius: calc(8 * var(--student-unit));
+  background: #f6f6f5;
+}
+
+.student-attendance-page__gauge .student-attendance-chart {
+  max-width: calc(180 * var(--student-unit));
+  margin: auto;
+}
+
+.student-attendance-page__legend {
+  display: flex;
+  justify-content: center;
+  gap: calc(10 * var(--student-unit));
+}
+
+.student-attendance-page__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(3 * var(--student-unit));
+  color: #657085;
+  font-size: calc(6 * var(--student-unit));
+}
+
+.student-attendance-page__legend i {
+  width: calc(6 * var(--student-unit));
+  height: calc(6 * var(--student-unit));
+  border-radius: 50%;
+}
+
+.student-attendance-page__legend .is-presence {
+  background: #f7b2c2;
+}
+
+.student-attendance-page__legend .is-absence {
+  background: #182e57;
+}
+
+.student-attendance-page__counters {
+  display: grid;
+  gap: calc(8 * var(--student-unit));
+}
+
+.student-attendance-page__counters strong {
+  padding: calc(10 * var(--student-unit));
+  border: 1px solid #e48b9a;
+  border-radius: calc(7 * var(--student-unit));
+  background: #fbe3e5;
+  font-size: calc(8 * var(--student-unit));
+  text-align: center;
+}
+
+.student-attendance-page__counters strong:nth-child(2) {
+  border-color: #aab2bc;
+  background: #fff;
+}
+
+.student-attendance-page__counters strong:nth-child(3) {
+  border-color: #d8d8d8;
+  background: #fafafa;
+  color: #888;
+}
+
+.student-attendance-page__history {
+  margin-top: calc(24 * var(--student-unit));
+}
+
+.student-attendance-page__history>header {
+  display: flex;
+  justify-content: space-between;
+  gap: calc(12 * var(--student-unit));
+}
+
+.student-attendance-page__filters {
+  display: flex;
+  gap: calc(5 * var(--student-unit));
+}
+
+.student-attendance-page__filters button {
+  padding: calc(4 * var(--student-unit)) calc(8 * var(--student-unit));
+  border: 0;
+  border-radius: 999px;
+  background: var(--student-navy);
+  color: #fff;
+  font-size: calc(6 * var(--student-unit));
+}
+
+.student-attendance-page__table {
+  margin-top: calc(10 * var(--student-unit));
+  overflow: hidden;
+  border: 1px solid #e48b9a;
+  border-radius: calc(7 * var(--student-unit));
+  background: var(--student-navy);
+  color: #fff;
+}
+
+.student-attendance-page__row {
+  display: grid;
+  grid-template-columns: .7fr 1.2fr 1.2fr .9fr;
+  align-items: center;
+  gap: calc(6 * var(--student-unit));
+  padding: calc(6 * var(--student-unit)) calc(9 * var(--student-unit));
+  border-bottom: 1px solid #ffffff18;
+  font-size: calc(6 * var(--student-unit));
+}
+
+.student-attendance-page__row:last-child {
+  border-bottom: 0;
+}
+
+.student-attendance-page__row--head {
+  color: #f7b2c2;
+  font-size: calc(5 * var(--student-unit));
+  font-weight: 700;
+}
+
+.student-attendance-page__row span:last-child {
+  justify-self: start;
+  padding: calc(2 * var(--student-unit)) calc(5 * var(--student-unit));
+  border-radius: 999px;
+  background: #1d9b86;
+  font-size: calc(5 * var(--student-unit));
+}
+
+.student-attendance-page__row span.is-absent {
+  background: #a34b83;
+}
+
+.student-attendance-page__row span.is-justified {
+  background: #59628d;
+}
+
+.student-attendance-page__stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: calc(5 * var(--student-unit));
+  margin-top: calc(6 * var(--student-unit));
+  padding: calc(7 * var(--student-unit));
+  border-radius: calc(6 * var(--student-unit));
+  background: var(--student-navy);
+  color: #fff;
+}
+
+.student-attendance-page__stats span {
+  text-align: center;
+  font-size: calc(5 * var(--student-unit));
+}
+
+.student-attendance-page__stats strong {
+  display: block;
+  color: #f7b2c2;
+  font-size: calc(8 * var(--student-unit));
+}
+
+.student-finance {
+  margin-top: calc(28 * var(--student-unit));
+}
+
+.student-finance__highlights {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(10 * var(--student-unit));
+  margin-top: calc(14 * var(--student-unit));
+}
+
+.student-finance__highlights div {
+  display: grid;
+  gap: calc(5 * var(--student-unit));
+  padding: calc(9 * var(--student-unit));
+  border: 1px solid #e48b9a;
+  border-radius: calc(7 * var(--student-unit));
+  font-size: calc(6 * var(--student-unit));
+}
+
+.student-finance__highlights strong {
+  font-size: calc(5 * var(--student-unit));
+}
+
+.student-finance__highlights span {
+  font-weight: 600;
+}
+
+.student-finance__body {
+  display: grid;
+  grid-template-columns: .85fr 1fr;
+  gap: calc(12 * var(--student-unit));
+  margin-top: calc(12 * var(--student-unit));
+}
+
+.student-finance__current {
+  display: grid;
+  gap: calc(12 * var(--student-unit));
+  padding: calc(14 * var(--student-unit));
+  border: 1px solid #8994a3;
+  border-radius: calc(8 * var(--student-unit));
+}
+
+.student-finance__current span {
+  font-size: calc(8 * var(--student-unit));
+}
+
+.student-finance__current strong {
+  font-size: calc(20 * var(--student-unit));
+  font-style: italic;
+}
+
+.student-finance__current button {
+  justify-self: center;
+  width: 80%;
+  padding: calc(6 * var(--student-unit));
+  border: 0;
+  border-radius: 999px;
+  background: var(--student-navy);
+  color: #fff;
+  font-size: calc(6 * var(--student-unit));
+  font-weight: 700;
+}
+
+.student-finance__months {
+  display: grid;
+  gap: calc(5 * var(--student-unit));
+}
+
+.student-finance__months>strong {
+  font-size: calc(8 * var(--student-unit));
+}
+
+.student-finance__months span {
+  display: grid;
+  gap: calc(3 * var(--student-unit));
+  padding: calc(7 * var(--student-unit));
+  border-radius: calc(5 * var(--student-unit));
+  background: var(--student-navy);
+  color: #fff;
+  font-size: calc(7 * var(--student-unit));
+}
+
+.student-finance__months small {
+  color: #f7b2c2;
+  font-size: calc(5 * var(--student-unit));
+}
+
+.store-page { min-height: 100%; padding: calc(8 * var(--student-unit)) calc(18 * var(--student-unit)) calc(40 * var(--student-unit)); }
+.store-page__header { display: flex; justify-content: space-between; gap: calc(16 * var(--student-unit)); }
+.store-page__header h1, .store-page__catalog h2 { margin: 0; font-family: Georgia, 'Times New Roman', serif; }
+.store-page__header h1 { font-size: calc(20 * var(--student-unit)); }
+.store-page__header p { margin: calc(5 * var(--student-unit)) 0 0; font-size: calc(7 * var(--student-unit)); }
+.store-page__header > .student-icon { width: calc(14 * var(--student-unit)); height: calc(14 * var(--student-unit)); }
+.store-page__hero { width: min(100%, calc(900 * var(--student-unit))); margin: calc(10 * var(--student-unit)) auto calc(4 * var(--student-unit)); border-radius: calc(9 * var(--student-unit)); background: transparent; }
+.store-page__hero img { display: block; width: 100%; height: auto; border-radius: inherit; }
+.store-page__categories { display: flex; flex-wrap: wrap; gap: calc(8 * var(--student-unit)); margin: calc(14 * var(--student-unit)) 0; }
+.store-page__categories button { padding: calc(6 * var(--student-unit)) calc(12 * var(--student-unit)); border: 1px solid #e3a0aa; border-radius: 999px; background: transparent; color: var(--student-navy); font-size: calc(7 * var(--student-unit)); cursor: pointer; }
+.store-page__categories button.is-selected { background: var(--student-rose); color: #fff; }
+.store-page__catalog h2 { margin-bottom: calc(10 * var(--student-unit)); font-size: calc(12 * var(--student-unit)); }
+.store-page__products { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: calc(10 * var(--student-unit)); }
+.store-page__product { display: grid; gap: calc(5 * var(--student-unit)); padding: calc(8 * var(--student-unit)); border: 1px solid #e2e4e5; border-radius: calc(8 * var(--student-unit)); background: #fff; color: var(--student-navy); text-align: left; cursor: pointer; }
+.store-page__product:hover { border-color: var(--student-rose); }
+.store-page__product img { display: block; width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: calc(5 * var(--student-unit)); background: #f7f7f5; }
+.store-page__product strong { font-size: calc(7 * var(--student-unit)); }
+.store-page__product span { font-size: calc(8 * var(--student-unit)); font-weight: 700; }
+.store-page__product small { justify-self: start; padding: calc(3 * var(--student-unit)) calc(6 * var(--student-unit)); border-radius: 999px; background: var(--student-rose); color: #fff; font-size: calc(5 * var(--student-unit)); }
+.store-page__pickup { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: calc(12 * var(--student-unit)); width: min(100%, calc(700 * var(--student-unit))); margin: calc(24 * var(--student-unit)) auto 0; }
+.store-page__offers { display: block; width: 100%; height: 100%; min-height: calc(170 * var(--student-unit)); object-fit: cover; border-radius: calc(8 * var(--student-unit)); }
+.store-page__map-card { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; border: 1px solid #e3a0aa; border-radius: calc(8 * var(--student-unit)); background: #fff; }
+.store-page__map-card iframe { display: block; flex: 1 1 auto; width: 100%; min-height: calc(220 * var(--student-unit)); height: auto; border: 0; }
+.store-page__pickup-copy { padding: calc(10 * var(--student-unit)) calc(14 * var(--student-unit)) calc(14 * var(--student-unit)); text-align: center; }
+.store-page__pickup-copy h2 { margin: 0 0 calc(10 * var(--student-unit)); font-family: Georgia, 'Times New Roman', serif; font-size: calc(13 * var(--student-unit)); font-style: italic; }
+.store-page__pickup-copy p { margin: calc(7 * var(--student-unit)) 0 0; font-size: calc(7 * var(--student-unit)); line-height: 1.35; }
+.store-page__modal-backdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 20px; background: #0f1c2db8; }
+.store-page__modal { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: calc(18 * var(--student-unit)); width: min(620px, 90vw); padding: calc(18 * var(--student-unit)); border-radius: calc(12 * var(--student-unit)); background: #fff; }
+.store-page__modal > img { width: 100%; aspect-ratio: 1; object-fit: contain; background: #f7f7f5; border-radius: calc(8 * var(--student-unit)); }
+.store-page__modal h2 { margin: calc(24 * var(--student-unit)) 0 calc(8 * var(--student-unit)); font-family: Georgia, 'Times New Roman', serif; font-size: calc(16 * var(--student-unit)); }
+.store-page__modal p { font-size: calc(8 * var(--student-unit)); line-height: 1.45; }
+.store-page__modal strong { display: block; margin: calc(16 * var(--student-unit)) 0; font-size: calc(16 * var(--student-unit)); }
+.store-page__modal > div > button { width: 100%; padding: calc(9 * var(--student-unit)); border: 0; border-radius: 999px; background: var(--student-navy); color: #fff; font-size: calc(7 * var(--student-unit)); cursor: pointer; }
+.store-page__modal > div > button:disabled { opacity: .5; cursor: not-allowed; }
+.store-page__modal-close { position: absolute; top: 8px; right: 10px; border: 0; background: transparent; color: var(--student-navy); font-size: 24px; cursor: pointer; }
 
 .student-agenda {
   margin-top: calc(48 * var(--student-unit));
@@ -1219,6 +1558,123 @@
 
   .student-evolution-page__feedback p {
     font-size: 8px;
+  }
+
+  .student-attendance-page {
+    margin-top: 18px;
+    padding: 16px;
+  }
+
+  .student-attendance-page h2 {
+    font-size: 20px;
+  }
+
+  .student-attendance-page h3 {
+    font-size: 14px;
+  }
+
+  .student-attendance-page p {
+    font-size: 9px;
+  }
+
+  .student-attendance-page__summary,
+  .student-finance__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .student-attendance-page__counters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .student-attendance-page__counters strong {
+    padding: 8px 4px;
+    font-size: 8px;
+  }
+
+  .student-attendance-page__history>header {
+    display: block;
+  }
+
+  .student-attendance-page__filters {
+    margin-top: 10px;
+  }
+
+  .student-attendance-page__row {
+    grid-template-columns: .8fr 1.2fr 1fr .9fr;
+    padding: 7px 5px;
+    font-size: 7px;
+  }
+
+  .student-attendance-page__row--head {
+    font-size: 6px;
+  }
+
+  .student-attendance-page__stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .student-finance__highlights {
+    gap: 8px;
+  }
+
+  .student-finance__current strong {
+    font-size: 22px;
+  }
+
+  .store-page {
+    padding: 8px 0 32px;
+  }
+
+  .store-page__header h1 {
+    font-size: 20px;
+  }
+
+  .store-page__header p {
+    font-size: 9px;
+  }
+
+  .store-page__categories {
+    gap: 5px;
+  }
+
+  .store-page__categories button {
+    padding: 5px 9px;
+    font-size: 8px;
+  }
+
+  .store-page__products {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .store-page__pickup {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .store-page__offers {
+    min-height: 0;
+  }
+
+  .store-page__map-card iframe {
+    flex: none;
+    min-height: 0;
+    height: 140px;
+  }
+
+  .store-page__product strong {
+    font-size: 9px;
+  }
+
+  .store-page__product span {
+    font-size: 10px;
+  }
+
+  .store-page__modal {
+    grid-template-columns: minmax(0, 1fr);
+    max-height: 90svh;
+    overflow-y: auto;
   }
 
   .student-agenda {
