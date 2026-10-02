@@ -107,6 +107,7 @@
 .auth-tabs .is-active {
   background: var(--auth-paper);
   color: var(--auth-ink);
+  border-radius: 58% 0 0 42% / 52% 0 0 48%;
 }
 
 .auth-tabs button:focus-visible {
