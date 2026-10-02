@@ -16,12 +16,17 @@ import statDanceIcon from '../assets/icone-frequencia-rosa.png'
 import statCalendarIcon from '../assets/icone-calendario-rosa.png'
 import statChartIcon from '../assets/icone-evolucao-rosa.png'
 import statBagIcon from '../assets/icone-loja-rosa.png'
+import adminHomeIcon from '../assets/home-azul-adm.png'
+import adminEvolutionIcon from '../assets/evolucao-adm.png'
+import adminSettingsIcon from '../assets/configuracoes-adm.png'
+import adminPeopleIcon from '../assets/pessoas-adm.png'
 import { supabase } from '../lib/supabase.js'
 import './AdminDashboard.css'
 
 const timezone = 'America/Sao_Paulo'
 const imageIcons = { profile: profileIcon, home: homeIcon, dance: danceIcon, calendar: calendarIcon, chart: chartIcon, logout: logoutIcon, bell: bellIcon, people: peopleIcon, finance: financeIcon, bag: bagIcon }
 const statIcons = { people: statPeopleIcon, dance: statDanceIcon, calendar: statCalendarIcon, chart: statChartIcon, bag: statBagIcon }
+const navIcons = { home: adminHomeIcon, users: adminPeopleIcon, dance: danceIcon, calendar: calendarIcon, chart: adminEvolutionIcon, settings: adminSettingsIcon }
 const navigation = [
   ['dashboard', 'Início', 'home'], ['alunos', 'Alunos', 'users'], ['turmas', 'Turmas', 'dance'],
   ['agenda', 'Agenda', 'calendar'], ['frequencia', 'Frequência', 'chart'], ['configuracoes', 'Configurações', 'settings'],
@@ -42,7 +47,7 @@ const columns = {
 const fieldNames = { id: 'Identificador', nome: 'Nome', email: 'E-mail', telefone: 'Telefone', status: 'Status cadastrado', turma: 'Turma', modalidade: 'Modalidade', professora: 'Professor', data: 'Data', competencia: 'Competência', valor: 'Valor', saldo: 'Saldo em aberto', frequencia: 'Frequência', aulas: 'Chamadas completas', presencas: 'Presenças', estoque: 'Estoque', categoria: 'Categoria', inicio: 'Início', fim: 'Fim', horario: 'Horário', dia: 'Dia da semana', capacidade: 'Capacidade', especialidade: 'Especialidade', conteudo: 'Conteúdo', lido: 'Lido', pendencia_financeira: 'Pendência financeira', baixa_frequencia: 'Baixa frequência' }
 
 function Icon({ name, className = '', tone = 'default' }) {
-  const asset = tone === 'stat' ? statIcons[name] : imageIcons[name]
+  const asset = tone === 'stat' ? statIcons[name] : tone === 'nav' ? navIcons[name] : imageIcons[name]
   if (asset) return <img className={'admin-icon ' + className} src={asset} alt="" aria-hidden="true" />
   const paths = {
     search: <><circle cx="10.5" cy="10.5" r="6.8" /><path d="m16 16 5 5" /></>,
@@ -186,7 +191,7 @@ export default function AdminDashboard({ session, sessionLoading = false, naviga
     <aside className="admin-sidebar">
       <button className={'admin-profile-button' + (view === 'perfil' ? ' is-active' : '')} aria-label="Meu perfil" title="Meu perfil" onClick={() => openView('perfil')}><Icon name="profile" /></button>
       <nav aria-label="Navegação administrativa">{navigation.map(([id, label, icon]) =>
-        <button key={id} type="button" aria-label={label} title={label} aria-current={view === id ? 'page' : undefined} className={view === id ? 'is-active' : ''} onClick={() => openView(id)}><Icon name={icon} /><span className="admin-sr-only">{label}</span></button>
+        <button key={id} type="button" aria-label={label} title={label} aria-current={view === id ? 'page' : undefined} className={view === id ? 'is-active' : ''} onClick={() => openView(id)}><Icon name={icon} tone="nav" className="admin-nav-icon" /><span className="admin-sr-only">{label}</span></button>
       )}</nav>
       <button className="admin-logout" type="button" aria-label="Sair da conta" title="Sair da conta" onClick={signOut}><Icon name="logout" /></button>
     </aside>
