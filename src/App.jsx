@@ -238,26 +238,6 @@ function App({ session }) {
     return () => window.removeEventListener('scroll', updateHeaderState)
   }, [])
 
-  useEffect(() => {
-    const revealElements = document.querySelectorAll('[data-reveal]')
-
-    if (!('IntersectionObserver' in window)) {
-      revealElements.forEach((element) => element.classList.add('is-revealed'))
-      return undefined
-    }
-
-    const revealObserver = new IntersectionObserver((entries, observer) => {
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting) return
-        entry.target.classList.add('is-revealed')
-        observer.unobserve(entry.target)
-      })
-    }, { threshold: 0.14, rootMargin: '0px 0px -8% 0px' })
-
-    revealElements.forEach((element) => revealObserver.observe(element))
-    return () => revealObserver.disconnect()
-  }, [])
-
   const openTrialModal = () => {
     setTrialForm(initialTrialForm)
     setTrialStep(1)
@@ -611,7 +591,6 @@ function App({ session }) {
         className="modalities-section"
         id="modalidades"
         aria-labelledby="modalities-title"
-        data-reveal
       >
         <div className="modalities-heading">
           <h1 id="modalities-title">Modalidades</h1>
@@ -642,7 +621,7 @@ function App({ session }) {
                   }
                 }}
               >
-                <div className="modality-card" data-reveal>
+                <div className="modality-card">
                   <div className="modality-art">
                     <img src={modality.image} alt="" />
                   </div>
@@ -659,7 +638,7 @@ function App({ session }) {
           ></button>
         </div>
       </section>
-      <section className="studio-section" id="studio" aria-labelledby="studio-title" data-reveal>
+      <section className="studio-section" id="studio" aria-labelledby="studio-title">
         <div className="studio-inner">
           <div className="studio-media">
             <div className="studio-card">
@@ -692,7 +671,7 @@ function App({ session }) {
         </div>
       </section>
 
-      <section className="teachers-section" id="equipe" aria-labelledby="teachers-title" data-reveal>
+      <section className="teachers-section" id="equipe" aria-labelledby="teachers-title">
         <div className="teachers-inner">
           <div className="teachers-heading">
             <h2 id="teachers-title">PROFESSORAS</h2>
@@ -711,7 +690,7 @@ function App({ session }) {
               {displayedTeachers.map((teacher) => {
                 const isModalAvailable = Boolean(teacherDetails[teacher.slug])
                 const teacherCard = (
-                    <div className="teacher-card" data-reveal>
+                    <div className="teacher-card">
                     <div className="teacher-art">
                       <img src={teacher.image} alt="" />
                     </div>
@@ -747,7 +726,7 @@ function App({ session }) {
         </div>
       </section>
       <img src={separacaoPagina} alt="" className="separacao-pagina" />
-      <section className="shows-section" id="espetaculos" aria-labelledby="shows-title" data-reveal>
+      <section className="shows-section" id="espetaculos" aria-labelledby="shows-title">
         <div className="shows-inner">
           <h2 id="shows-title">ESPETÁCULOS</h2>
           <p className="shows-lead">Quando a dança ganha <strong>palco</strong>.</p>
@@ -767,7 +746,7 @@ function App({ session }) {
                   href={`#${show.slug}`}
                   className={`show ${show.featured ? 'show--featured' : ''} show-${show.slug}`}
                   aria-label={`Conheça ${show.name}`}>
-                  <div className="show-card" data-reveal>
+                  <div className="show-card">
                       <div className="show-art">
                         <img src={show.image} alt={show.name} />
                       </div>
@@ -788,7 +767,7 @@ function App({ session }) {
         </div>
       </section>
 
-      <section className="inscricao-section" id="inscricao" aria-labelledby="inscricao-title" data-reveal>
+      <section className="inscricao-section" id="inscricao" aria-labelledby="inscricao-title">
         <div className="inscricao-inner">
           <div className="inscricao-art" aria-hidden="true">
             <img src={inscricao} alt="Inscrição" />
@@ -1145,24 +1124,8 @@ function App({ session }) {
   )
 }
 
-function AnimatedNumber({ target, duration = 1200 }) {
-  const [value, setValue] = useState(0)
-
-  useEffect(() => {
-    let rafId
-    let start
-    const step = (timestamp) => {
-      if (!start) start = timestamp
-      const progress = Math.min((timestamp - start) / duration, 1)
-      const current = Math.floor(progress * target)
-      setValue(current)
-      if (progress < 1) rafId = requestAnimationFrame(step)
-    }
-    rafId = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(rafId)
-  }, [target, duration])
-
-  return <span className="stat-number">+{value}</span>
+function AnimatedNumber({ target }) {
+  return <span className="stat-number">+{target}</span>
 }
 
 export default App

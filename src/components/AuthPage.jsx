@@ -155,7 +155,8 @@ export default function AuthPage({ mode, session, loading, callback, initialErro
         savePendingAccess(null)
         setPassword('')
         setCompleted(true)
-        navigate('transicao-aluno')
+        const { data: adminAccess } = await supabase.rpc('is_admin')
+        navigate(adminAccess === true ? 'admin' : 'transicao-aluno')
       })
     } else if (currentStep === 1) {
       requestConfirmationLink()
@@ -207,7 +208,7 @@ export default function AuthPage({ mode, session, loading, callback, initialErro
 
   return (
     <main className="auth-page">
-      <aside className="auth-art" aria-label="Studio Keli Dalpian">
+      <aside className={`auth-art${!isLogin && !isRecovery ? ' auth-art--first-access' : ''}`} aria-label="Studio Keli Dalpian">
         <button className="auth-back" type="button" onClick={() => navigate('inicio')}>
           <span aria-hidden="true">←</span> Voltar ao Studio
         </button>

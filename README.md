@@ -61,6 +61,20 @@ npm run supabase:check
 
 ### Login e primeiro acesso
 
+### Área administrativa
+
+A área administrativa fica em `/#admin` e é liberada somente para usuários cujo
+perfil em `public.usuario` esteja ligado a `Administrador`/`admin`. A migration
+`20261002000025_admin_dashboard_and_test_user.sql` cria a RPC protegida do painel
+e uma conta fictícia para desenvolvimento:
+
+- e-mail: `admin.teste@studiokeli.local`
+- senha: `Admin@12345`
+
+Depois de aplicar as migrations no Supabase, o login dessa conta encaminha
+automaticamente para o painel administrativo. Essa conta é somente para teste e
+deve ser removida antes da publicação.
+
 O botão **Entrar** abre `/#entrar`. A tela usa o cliente compartilhado do Supabase
 Auth para login com e-mail e senha, cadastro de novas contas, confirmação por
 link, criação de senha, recuperação de senha e logout. A sessão é restaurada ao

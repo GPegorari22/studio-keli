@@ -50,10 +50,42 @@
   min-height: 100svh;
   border-radius: 0 36px 36px 0;
   background: var(--auth-pink);
+  isolation: isolate;
   overflow: hidden;
 }
 
+.auth-art::before,
+.auth-art::after {
+  position: absolute;
+  right: 0;
+  z-index: 0;
+  width: 40px;
+  height: 40px;
+  content: '';
+  pointer-events: none;
+}
+
+.auth-art::before {
+  top: calc(50% - 116px);
+  background: radial-gradient(circle at 0 0, transparent 39px, var(--auth-paper) 40px);
+}
+
+.auth-art::after {
+  top: 50%;
+  background: radial-gradient(circle at 0 100%, transparent 39px, var(--auth-paper) 40px);
+}
+
+.auth-art--first-access::before {
+  top: calc(50% - 40px);
+}
+
+.auth-art--first-access::after {
+  top: calc(50% + 76px);
+}
+
 .auth-art__brand {
+  position: relative;
+  z-index: 1;
   width: 82%;
   max-height: 85svh;
   margin-left: -3%;
@@ -83,6 +115,7 @@
 
 .auth-tabs {
   position: absolute;
+  z-index: 2;
   top: 50%;
   right: 0;
   display: grid;
@@ -107,7 +140,6 @@
 .auth-tabs .is-active {
   background: var(--auth-paper);
   color: var(--auth-ink);
-  border-radius: 58% 0 0 42% / 52% 0 0 48%;
 }
 
 .auth-tabs button:focus-visible {
@@ -125,11 +157,6 @@
   width: 100%;
   max-width: 390px;
   animation: auth-appear 350ms ease both;
-}
-
-/* Contorno orgânico: curvas assimétricas no painel colorido, sem cantos rígidos. */
-.auth-art {
-  border-radius: 0 18% 13% 0 / 0 11% 15% 0;
 }
 
 .auth-heading {
@@ -449,7 +476,8 @@
 
 @media (max-width: 760px) {
   .auth-page { grid-template-columns: 1fr; grid-template-rows: 220px 1fr; }
-  .auth-art { min-height: 220px; border-radius: 0 0 28px 28px; }
+  .auth-art { min-height: 220px; border-radius: 0 0 28px 28px; background: var(--auth-pink); }
+  .auth-art::before, .auth-art::after { content: none; }
   .auth-art__brand { width: 160px; height: 205px; margin: 8px 0 0 30px; }
   .auth-back { top: 7px; left: auto; right: 22px; font-size: 10px !important; }
   .auth-tabs { width: 145px; top: auto; bottom: 14px; transform: none; }
@@ -469,6 +497,3 @@
   .auth-submit { transition: none; }
 }
 
-@media (max-width: 760px) {
-  .auth-art { border-radius: 0 0 14% 9% / 0 0 12% 8%; }
-}

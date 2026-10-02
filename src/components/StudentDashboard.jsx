@@ -1,4 +1,4 @@
-import { Component, useCallback, useEffect, useId, useState } from 'react'
+import { Component, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import seuMovimento from '../assets/seu-movimento.png'
 import studentRibbon from '../assets/student-ribbon.png'
 import profileIcon from '../assets/student-icon-profile.png'
@@ -80,13 +80,48 @@ function Icon({ name, source }) {
 
 function AttendanceChart({ attendance }) {
   const patternId = useId()
+  const chartRef = useRef(null)
+  const svgRef = useRef(null)
   const hasAttendance = attendance?.percentual != null
   const percent = Math.max(0, Math.min(100, Number(attendance?.percentual) || 0))
   const arc = 'M 24 108 A 76 76 0 0 1 176 108'
 
+  useEffect(() => {
+    const chart = chartRef.current
+    const svg = svgRef.current
+    if (!chart || !svg) return undefined
+    const paths = [...svg.querySelectorAll('.student-gauge__presence-border, .student-gauge__presence')]
+    let frame
+    let running = false
+    const reset = () => {
+      if (frame) cancelAnimationFrame(frame)
+      running = false
+      svg.style.transform = 'scale(.92)'
+      paths.forEach((path) => { path.style.animation = 'none'; path.style.strokeDashoffset = '100' })
+    }
+    const start = () => {
+      if (running) return
+      running = true
+      const startedAt = performance.now()
+      reset()
+      running = true
+      const tick = (now) => {
+        const progress = Math.min(1, (now - startedAt) / 1200)
+        const eased = 1 - ((1 - progress) ** 3)
+        svg.style.transform = `scale(${0.92 + eased * 0.08})`
+        paths.forEach((path) => { path.style.strokeDashoffset = String(100 * (1 - eased)) })
+        if (progress < 1) frame = requestAnimationFrame(tick)
+      }
+      frame = requestAnimationFrame(tick)
+    }
+    const observer = new IntersectionObserver(([entry]) => entry.isIntersecting ? start() : reset(), { root: chart.closest('.student-content'), threshold: 0.25 })
+    observer.observe(chart)
+    return () => { observer.disconnect(); if (frame) cancelAnimationFrame(frame) }
+  }, [percent, hasAttendance])
+
   return (
-    <div className="student-attendance-chart" role="img" aria-label={hasAttendance ? `${percent}% de frequência` : 'Sem registros de frequência'}>
-      <svg viewBox="0 0 200 138" aria-hidden="true">
+    <div ref={chartRef} className="student-attendance-chart" role="img" aria-label={hasAttendance ? `${percent}% de frequência` : 'Sem registros de frequência'}>
+      <svg ref={svgRef} viewBox="0 0 200 138" aria-hidden="true">
         <defs>
           <pattern id={patternId} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(35)">
             <line x1="0" y1="0" x2="0" y2="5" stroke="#a9acae" strokeWidth="2.5" />
@@ -107,7 +142,9 @@ function AttendanceChart({ attendance }) {
   )
 }
 
-function ProgressChart({ criteria }) {
+function ProgressChart({ criteria, animationKey }) {
+  const chartRef = useRef(null)
+  const ringsRef = useRef(null)
   const criterionOrder = ['Técnica', 'Tecnica', 'Flexibilidade', 'Expressão', 'Expressao', 'Disciplina']
   const values = (criteria || []).slice().sort((first, second) => criterionOrder.indexOf(first.nome) - criterionOrder.indexOf(second.nome)).slice(0, 4).map((criterion, index) => ({
     ...criterion,
@@ -115,11 +152,60 @@ function ProgressChart({ criteria }) {
     color: index % 2 ? '#203b61' : '#dd6985',
   }))
 
+  useLayoutEffect(() => {
+    const chart = chartRef.current
+    const svg = ringsRef.current
+    if (!chart || !svg) return undefined
+    const rings = [...svg.querySelectorAll('.student-progress-chart__value')]
+    if (!rings.length) return undefined
+    let frame
+    let running = false
+
+    const reset = () => {
+      if (frame) cancelAnimationFrame(frame)
+      frame = undefined
+      running = false
+      svg.style.transform = 'scale(.92)'
+      rings.forEach((ring) => {
+        ring.style.animation = 'none'
+        ring.style.strokeDashoffset = '360'
+      })
+    }
+
+    const start = () => {
+      if (running) return
+      reset()
+      running = true
+      const startedAt = performance.now()
+      const animate = (now) => {
+        const elapsed = now - startedAt
+        const drawProgress = Math.min(1, elapsed / 1500)
+        const eased = 1 - ((1 - drawProgress) ** 3)
+        svg.style.transform = `scale(${0.92 + eased * 0.08})`
+        rings.forEach((ring) => { ring.style.strokeDashoffset = String(360 * (1 - eased)) })
+        if (drawProgress < 1) frame = requestAnimationFrame(animate)
+        else running = false
+      }
+      frame = requestAnimationFrame(animate)
+    }
+
+    reset()
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) start()
+      else reset()
+    }, { root: chart.closest('.student-content'), threshold: 0.25 })
+    observer.observe(chart)
+    return () => {
+      observer.disconnect()
+      if (frame) cancelAnimationFrame(frame)
+    }
+  }, [values.length, animationKey])
+
   if (!values.length) return <p className="student-empty-chart">Sua evolução aparecerá aqui apàs a primeira avaliação.</p>
 
   return (
-    <div className="student-progress-chart">
-      <svg className="student-progress-chart__rings" viewBox="0 0 200 200" aria-hidden="true">
+    <div ref={chartRef} className="student-progress-chart">
+      <svg ref={ringsRef} className="student-progress-chart__rings" viewBox="0 0 200 200" aria-hidden="true">
         {values.map((criterion, index) => {
           const radius = 88 - index * 20
           const rotation = [28, 70, 88, -10][index]
@@ -156,8 +242,9 @@ function ProgressChart({ criteria }) {
   )
 }
 
-function Evolution({ criteria, studentName, evaluation, evaluationHistory }) {
+function Evolution({ criteria, studentName, evaluation, evaluationHistory, animationKey }) {
   const [activeTrajectoryPoint, setActiveTrajectoryPoint] = useState(null)
+  const trajectorySvgRef = useRef(null)
   const evaluationDate = evaluation?.data ? shortDate.format(toDate(evaluation.data)) : 'Sem registro'
   const feedback = evaluation?.observacoes || 'Sua avaliação será atualizada pelo Studio apàs o próximo acompanhamento.'
   const trajectory = (evaluationHistory || []).slice(-6)
@@ -167,6 +254,41 @@ function Evolution({ criteria, studentName, evaluation, evaluationHistory }) {
     return { x, y: 135 - (score * 1.05), label: entry.data ? new Intl.DateTimeFormat('pt-BR', { month: 'short' }).format(toDate(entry.data)).slice(0, 3).toUpperCase() : '' }
   })
   const polyline = points.map(({ x, y }) => `${x},${y}`).join(' ')
+
+  useLayoutEffect(() => {
+    const svg = trajectorySvgRef.current
+    const line = svg?.querySelector('polyline')
+    const circles = svg ? [...svg.querySelectorAll('circle')] : []
+    if (!line || !circles.length) return undefined
+    const length = line.getTotalLength()
+    const duration = 1400
+    const startedAt = performance.now()
+    let frame
+    line.style.animation = 'none'
+    line.style.strokeDasharray = String(length)
+    line.style.strokeDashoffset = String(length)
+    circles.forEach((circle) => {
+      circle.style.animation = 'none'
+      circle.style.opacity = '0'
+      circle.style.transform = 'scale(0)'
+    })
+    const animate = (now) => {
+      const elapsed = now - startedAt
+      const progress = Math.min(1, elapsed / duration)
+      const eased = 1 - ((1 - progress) ** 3)
+      line.style.strokeDashoffset = String(length * (1 - eased))
+      circles.forEach((circle, index) => {
+        const pointProgress = Math.min(1, Math.max(0, (elapsed - duration * 0.72 - index * 140) / 420))
+        const pointEased = 1 - ((1 - pointProgress) ** 3)
+        circle.style.opacity = String(pointEased)
+        circle.style.transform = `scale(${pointEased})`
+      })
+      if (progress < 1 || circles.some((circle) => circle.style.opacity !== '1')) frame = requestAnimationFrame(animate)
+    }
+    frame = requestAnimationFrame(animate)
+    return () => { if (frame) cancelAnimationFrame(frame) }
+  }, [animationKey, points.length])
+
   return (
     <section className="student-evolution-page" id="evolucao" aria-label="Sua evolução" tabIndex={-1}>
       <header className="student-evolution-page__header">
@@ -183,7 +305,7 @@ function Evolution({ criteria, studentName, evaluation, evaluationHistory }) {
       <div className="student-evolution-page__overview">
         <section aria-labelledby="evolution-chart-title">
           <h3 id="evolution-chart-title">Keli Dance Evolution</h3>
-          <ProgressChart criteria={criteria} />
+          <ProgressChart key={animationKey} criteria={criteria} animationKey={animationKey} />
         </section>
         <figure className="student-evolution-page__image">
           <img src={evolutionStudentImage} alt="Bailarina em movimento" />
@@ -191,22 +313,31 @@ function Evolution({ criteria, studentName, evaluation, evaluationHistory }) {
       </div>
       <section className="student-evolution-page__trajectory" aria-labelledby="trajectory-title">
           <h3 id="trajectory-title">Minha trajetória</h3>
-          {points.length ? <svg viewBox="0 0 520 170" role="img" aria-label="Histórico das avaliações do aluno">
+          {points.length ? <svg ref={trajectorySvgRef} viewBox="0 0 520 170" role="img" aria-label="Histórico das avaliações do aluno">
             <path d="M34 135H492M34 100H492M34 65H492M34 30H492" />
             <text x="2" y="138">0%</text><text x="2" y="103">33%</text><text x="2" y="68">66%</text><text x="2" y="33">100%</text>
-            <polyline points={polyline} />
+            <polyline className={activeTrajectoryPoint !== null ? 'is-interacting' : ''} points={polyline} pathLength="1" />
             {points.map(({ x, y, label }, index) => {
               const entry = trajectory[index]
               const score = Math.round(Number(entry.nota) || 0)
-              const tooltipX = Math.max(4, Math.min(430, x - 34))
-              return <g key={`${x}-${y}`} onMouseEnter={() => setActiveTrajectoryPoint(index)} onMouseLeave={() => setActiveTrajectoryPoint(null)} onFocus={() => setActiveTrajectoryPoint(index)} onBlur={() => setActiveTrajectoryPoint(null)} tabIndex="0">
+              const tooltipWidth = 128
+              const tooltipHeight = 43
+              const tooltipX = Math.max(4, Math.min(520 - tooltipWidth - 4, x - tooltipWidth / 2))
+              const tooltipY = Math.max(4, y - tooltipHeight - 13)
+              const isActive = activeTrajectoryPoint === index
+              return <g className={isActive ? 'is-active' : ''} key={`${x}-${y}`} onMouseEnter={() => setActiveTrajectoryPoint(index)} onMouseLeave={() => setActiveTrajectoryPoint(null)} onFocus={() => setActiveTrajectoryPoint(index)} onBlur={() => setActiveTrajectoryPoint(null)} tabIndex="0" role="button" aria-label={`${label}: ${score}%`}>
                 <title>{`${label}: ${score}%`}</title>
-                <circle cx={x} cy={y} r="5" />
+                {isActive && <line className="student-evolution-page__trajectory-guide" x1={x} x2={x} y1="30" y2="135" />}
+                <circle className="student-evolution-page__trajectory-hit-area" cx={x} cy={y} r="14" />
+                <circle className="student-evolution-page__trajectory-halo" cx={x} cy={y} r="10" />
+                <circle className="student-evolution-page__trajectory-point" cx={x} cy={y} r="5" style={{ animationDelay: `${1300 + index * 140}ms` }} />
                 <text x={x} y="158" textAnchor="middle">{label}</text>
                 {activeTrajectoryPoint === index && <g className="student-evolution-page__trajectory-tooltip" pointerEvents="none">
-                  <rect x={tooltipX} y={Math.max(4, y - 39)} width="68" height="27" rx="4" />
-                  <text x={tooltipX + 34} y={Math.max(16, y - 23)} textAnchor="middle">{entry.data ? shortDate.format(toDate(entry.data)) : label}</text>
-                  <text x={tooltipX + 34} y={Math.max(27, y - 13)} textAnchor="middle">Média: {score}%</text>
+                  <rect className="student-evolution-page__trajectory-tooltip-card" x={tooltipX} y={tooltipY} width={tooltipWidth} height={tooltipHeight} rx="10" />
+                  <path className="student-evolution-page__trajectory-tooltip-tail" d={`M ${x - 7} ${tooltipY + tooltipHeight} L ${x} ${tooltipY + tooltipHeight + 7} L ${x + 7} ${tooltipY + tooltipHeight} Z`} />
+                  <rect className="student-evolution-page__trajectory-tooltip-date-badge" x={tooltipX + 9} y={tooltipY + 7} width={tooltipWidth - 18} height="12" rx="6" />
+                  <text x={tooltipX + tooltipWidth / 2} y={tooltipY + 16} textAnchor="middle">{entry.data ? shortDate.format(toDate(entry.data)) : label}</text>
+                  <text x={tooltipX + tooltipWidth / 2} y={tooltipY + 35} textAnchor="middle">Média: {score}%</text>
                 </g>}
               </g>
             })}
@@ -295,6 +426,7 @@ class CartPageBoundary extends Component {
 function CartPage({ onContinue }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const [clearing, setClearing] = useState(false)
   const [message, setMessage] = useState('')
   const [payment, setPayment] = useState('pix')
   const [orderRequested, setOrderRequested] = useState(false)
@@ -353,6 +485,29 @@ function CartPage({ onContinue }) {
     }
   }
 
+  const clearCart = async () => {
+    if (!items.length || clearing) return
+    if (!window.confirm('Deseja remover todos os itens do carrinho?')) return
+    setClearing(true)
+    setMessage('')
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setMessage('FaÃ§a login para limpar o carrinho.')
+      setClearing(false)
+      return
+    }
+    const { data: cart, error: cartError } = await supabase.from('carrinho_aluno').select('id_carrinho').eq('id_usuario', user.id).maybeSingle()
+    if (cartError || !cart) {
+      setMessage(`NÃ£o foi possÃ­vel limpar o carrinho${cartError ? `: ${cartError.message}` : '.'}`)
+      setClearing(false)
+      return
+    }
+    const { error } = await supabase.from('item_carrinho_aluno').delete().eq('id_carrinho', cart.id_carrinho)
+    if (error) setMessage(`NÃ£o foi possÃ­vel limpar o carrinho: ${error.message}`)
+    else setItems([])
+    setClearing(false)
+  }
+
   const subtotal = items.reduce((total, item) => total + Number(item.preco_unitario || 0) * Number(item.quantidade || 0), 0)
   const imageForCartItem = (item) => {
     const product = Array.isArray(item.produto) ? item.produto[0] : item.produto
@@ -363,7 +518,7 @@ function CartPage({ onContinue }) {
 
   return <section className="student-cart-page" aria-label="Meu carrinho" tabIndex={-1}>
     <header className="student-cart-page__header"><div><h1>Meu Carrinho</h1><p>Revise os seus itens antes de finalizar o pedido.</p></div><div className="student-cart-page__actions"><button type="button" aria-label="Carrinho"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h6.9a2 2 0 0 0 1.9-1.4L20 7H6" /><circle cx="10" cy="20" r="1" /><circle cx="18" cy="20" r="1" /></svg></button><Icon name="bell" /></div></header>
-    <div className="student-cart-page__body"><section className="student-cart-page__items"><h2>Itens selecionados</h2>{loading ? <p>Carregando carrinho...</p> : items.length ? items.map((item) => <article className="student-cart-item" key={item.id_item}><div className="student-cart-item__image"><img src={imageForCartItem(item)} alt="" /></div><div className="student-cart-item__info"><h3>{item.produto?.nome || 'Produto'}</h3><small>{item.tamanho}</small><span> ✓ Tamanho cadastrado no produto</span><strong>{money(item.preco_unitario)}</strong></div><button type="button" className="student-cart-item__remove" onClick={() => updateQuantity(item, 0)}>× Remover</button><div className="student-cart-item__quantity"><button type="button" onClick={(event) => { event.preventDefault(); event.stopPropagation(); updateQuantity(item, Number(item.quantidade) - 1) }}>−</button><span>{item.quantidade}</span><button type="button" onClick={(event) => { event.preventDefault(); event.stopPropagation(); updateQuantity(item, Number(item.quantidade) + 1) }}>+</button></div><strong className="student-cart-item__total">{money(Number(item.preco_unitario) * Number(item.quantidade))}</strong></article>) : <p>Seu carrinho está vazio.</p>}<button type="button" className="student-cart-page__continue" onClick={onContinue}>← Continuar comprando <span>Precisa de mais algum item para sua aula?</span></button></section><aside className="student-cart-summary"><h2>Resumo do pedido</h2><p>{items.length} {items.length === 1 ? 'item' : 'itens'}</p>{items.map((item) => <div className="student-cart-summary__line" key={item.id_item}><span>{item.produto?.nome || 'Produto'}</span><strong>{money(Number(item.preco_unitario) * Number(item.quantidade))}</strong></div>)}<div className="student-cart-summary__line"><span>Subtotal</span><strong>{money(subtotal)}</strong></div><div className="student-cart-summary__line"><span>Retirada</span><strong>Grátis</strong></div><div className="student-cart-summary__total"><span>TOTAL</span><strong>{money(subtotal)}</strong></div><h3>Forma de recebimento</h3><label className="student-cart-summary__choice is-selected"><input type="radio" checked readOnly /> Retirada no Studio<small>Studio Keli Dalpian de Dança<br />Monte Alto — SP</small></label><h3>Como deseja pagar?</h3><div className="student-cart-summary__payments"><label className={payment === 'pix' ? 'is-selected' : ''}><input type="radio" name="payment" checked={payment === 'pix'} onChange={() => setPayment('pix')} /> PIX<small>Gerar código PIX</small></label><label className={payment === 'card' ? 'is-selected' : ''}><input type="radio" name="payment" checked={payment === 'card'} onChange={() => setPayment('card')} /> Cartão no Studio<small>Pagamento presencial</small></label></div><button type="button" className="student-cart-summary__finish" disabled={!items.length || orderSubmitting} onClick={requestOrder}>{orderSubmitting ? 'ENVIANDO...' : 'FINALIZAR PEDIDO'}</button>{message && <small className="student-cart-summary__message">{message}</small>}<small className="student-cart-summary__privacy">♧ Seus dados são utilizados apenas para processar seu pedido.</small></aside></div>
+    <div className="student-cart-page__body"><section className="student-cart-page__items"><div className="student-cart-page__items-heading"><h2>Itens selecionados</h2><button type="button" className="student-cart-page__clear" onClick={clearCart} disabled={!items.length || clearing}>{clearing ? 'LIMPANDO...' : 'LIMPAR CARRINHO'}</button></div>{loading ? <p>Carregando carrinho...</p> : items.length ? items.map((item) => <article className="student-cart-item" key={item.id_item}><div className="student-cart-item__image"><img src={imageForCartItem(item)} alt="" /></div><div className="student-cart-item__info"><h3>{item.produto?.nome || 'Produto'}</h3><small>{item.tamanho}</small><span> ✓ Tamanho cadastrado no produto</span><strong>{money(item.preco_unitario)}</strong></div><button type="button" className="student-cart-item__remove" onClick={() => updateQuantity(item, 0)}>× Remover</button><div className="student-cart-item__quantity"><button type="button" onClick={(event) => { event.preventDefault(); event.stopPropagation(); updateQuantity(item, Number(item.quantidade) - 1) }}>−</button><span>{item.quantidade}</span><button type="button" onClick={(event) => { event.preventDefault(); event.stopPropagation(); updateQuantity(item, Number(item.quantidade) + 1) }}>+</button></div><strong className="student-cart-item__total">{money(Number(item.preco_unitario) * Number(item.quantidade))}</strong></article>) : <p>Seu carrinho está vazio.</p>}<button type="button" className="student-cart-page__continue" onClick={onContinue}>← Continuar comprando <span>Precisa de mais algum item para sua aula?</span></button></section><aside className="student-cart-summary"><h2>Resumo do pedido</h2><p>{items.length} {items.length === 1 ? 'item' : 'itens'}</p>{items.map((item) => <div className="student-cart-summary__line" key={item.id_item}><span>{item.produto?.nome || 'Produto'}</span><strong>{money(Number(item.preco_unitario) * Number(item.quantidade))}</strong></div>)}<div className="student-cart-summary__line"><span>Subtotal</span><strong>{money(subtotal)}</strong></div><div className="student-cart-summary__line"><span>Retirada</span><strong>Grátis</strong></div><div className="student-cart-summary__total"><span>TOTAL</span><strong>{money(subtotal)}</strong></div><h3>Forma de recebimento</h3><label className="student-cart-summary__choice is-selected"><input type="radio" checked readOnly /> Retirada no Studio<small>Studio Keli Dalpian de Dança<br />Monte Alto — SP</small></label><h3>Como deseja pagar?</h3><div className="student-cart-summary__payments"><label className={payment === 'pix' ? 'is-selected' : ''}><input type="radio" name="payment" checked={payment === 'pix'} onChange={() => setPayment('pix')} /> PIX<small>Gerar código PIX</small></label><label className={payment === 'card' ? 'is-selected' : ''}><input type="radio" name="payment" checked={payment === 'card'} onChange={() => setPayment('card')} /> Cartão no Studio<small>Pagamento presencial</small></label></div><button type="button" className="student-cart-summary__finish" disabled={!items.length || orderSubmitting} onClick={requestOrder}>{orderSubmitting ? 'ENVIANDO...' : 'FINALIZAR PEDIDO'}</button>{message && <small className="student-cart-summary__message">{message}</small>}<small className="student-cart-summary__privacy">♧ Seus dados são utilizados apenas para processar seu pedido.</small></aside></div>
     {orderRequested && <div className="student-order-modal__backdrop" role="presentation" onClick={() => setOrderRequested(false)}><section className="student-order-modal" role="dialog" aria-modal="true" aria-labelledby="order-requested-title" onClick={(event) => event.stopPropagation()}><button type="button" className="student-order-modal__close" onClick={() => setOrderRequested(false)} aria-label="Fechar">×</button><h2 id="order-requested-title">Pedido solicitado!</h2><div className="student-order-modal__card"><div className="student-order-modal__meta"><span>PEDIDO Nº<strong>{orderNumber}</strong></span><span>Data do pedido<strong>{orderDate}</strong></span></div><h3>Resumo do pedido</h3><div className="student-order-modal__columns"><div>{items.map((item, index) => <div className="student-order-modal__item" key={item.id_item}><img src={imageForCartItem(item)} alt="" /><span><strong>Produto {index + 1}: {item.produto?.nome || 'Produto'}</strong><small>Categoria: Produto<br />Tamanho: {item.tamanho}<br />Quantidade: {item.quantidade}</small></span><b>{money(Number(item.preco_unitario) * Number(item.quantidade))}</b></div>)}</div><div className="student-order-modal__payment"><span>Forma de pagamento <b>{payment === 'pix' ? 'PIX' : 'Cartão no Studio'}</b></span><span>Subtotal <b>{money(subtotal)}</b></span><span>Retirada <b>Grátis</b></span><strong>Status: <b>{money(subtotal)}</b></strong><small>Pagamento pendente</small>{payment === 'pix' && <button type="button" onClick={() => setMessage('Código PIX será gerado após a confirmação do pedido.')}>GERAR CÓDIGO PIX</button>}<small>O pagamento será confirmado automaticamente após a identificação.</small></div></div><div className="student-order-modal__pickup"><strong>Onde retirar</strong><span>📍 Studio Keli Dalpian de Dança, Monte Alto — SP</span><span>Status: Pedido em preparação → Preparando → Pronto para retirada</span><small>Você receberá uma notificação quando seu pedido estiver disponível para retirada.</small></div></div><button type="button" className="student-order-modal__home" onClick={onContinue}>Página inicial →</button></section></div>}
   </section>
 }
@@ -403,9 +558,11 @@ function StorePage() {
   const [quantity, setQuantity] = useState(1)
   const [addingToCart, setAddingToCart] = useState(false)
   const [cartMessage, setCartMessage] = useState('')
+  const [cartSuccess, setCartSuccess] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [showCart, setShowCart] = useState(false)
+  const [cartCount, setCartCount] = useState(0)
 
   useEffect(() => {
     let mounted = true
@@ -431,6 +588,51 @@ function StorePage() {
   const imageFor = (product) => product.imagem_produto?.slice().sort((first, second) => Number(second.principal) - Number(first.principal) || first.ordem - second.ordem)[0]?.caminho || storePointeShoes
   const money = (value) => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
   const installment = (value) => money(Number(value || 0) / 10)
+  const animateProductToCart = () => {
+    const source = document.querySelector('.store-page__modal-media > img')
+    const target = document.querySelector('.store-page__cart-button')
+    if (!source || !target) return null
+    const sourceRect = source.getBoundingClientRect()
+    const targetSize = target.getBoundingClientRect()
+    const targetClone = target.cloneNode(true)
+    targetClone.className = 'store-page__cart-button store-page__cart-flight-target'
+    Object.assign(targetClone.style, { left: 'auto', top: '20px', right: '72px', width: `${targetSize.width}px`, height: `${targetSize.height}px` })
+    document.body.appendChild(targetClone)
+    const targetRect = targetClone.getBoundingClientRect()
+    const clone = source.cloneNode(true)
+    const startX = sourceRect.left + sourceRect.width / 2
+    const startY = sourceRect.top + sourceRect.height / 2
+    const endX = targetRect.left + targetRect.width / 2
+    const endY = targetRect.top + targetRect.height / 2
+    const dx = endX - startX
+    const dy = endY - startY
+    clone.className = 'store-page__cart-flight'
+    Object.assign(clone.style, { left: `${sourceRect.left}px`, top: `${sourceRect.top}px`, width: `${sourceRect.width}px`, height: `${sourceRect.height}px` })
+    clone.style.setProperty('--flight-x', `${dx}px`)
+    clone.style.setProperty('--flight-y', `${dy}px`)
+    clone.style.setProperty('--flight-mid-x', `${dx * 0.52}px`)
+    clone.style.setProperty('--flight-mid-y', `${dy * 0.52 - 34}px`)
+    document.body.appendChild(clone)
+    const keyframes = [
+      { transform: 'translate3d(0, 0, 0) scale(1) rotate(0deg)', opacity: 1 },
+      { transform: `translate3d(${dx * 0.52}px, ${dy * 0.52 - 34}px, 0) scale(.48) rotate(7deg)`, opacity: .92, offset: .58 },
+      { transform: `translate3d(${dx}px, ${dy}px, 0) scale(.14) rotate(11deg)`, opacity: 0 },
+    ]
+    let animation
+    if (typeof clone.animate === 'function') {
+      animation = clone.animate(keyframes, { duration: 1600, easing: 'cubic-bezier(.22, .72, .28, 1)', fill: 'forwards' })
+      animation.finished.then(() => clone.remove()).catch(() => clone.remove())
+    } else {
+      requestAnimationFrame(() => clone.classList.add('is-flying'))
+    }
+    const timer = window.setTimeout(() => { clone.remove(); targetClone.remove() }, 1750)
+    return () => {
+      window.clearTimeout(timer)
+      animation?.cancel()
+      clone.remove()
+      targetClone.remove()
+    }
+  }
   const addSelectedProductToCart = async () => {
     if (!selectedProduct || !selectedProduct.estoque || addingToCart) return
     setAddingToCart(true)
@@ -448,7 +650,17 @@ function StorePage() {
       return
     }
     const { error: itemError } = await supabase.from('item_carrinho_aluno').upsert({ id_carrinho: cart.id_carrinho, id_produto: selectedProduct.id_produto, tamanho: selectedSize, quantidade: quantity, preco_unitario: selectedProduct.preco, atualizado_em: new Date().toISOString() }, { onConflict: 'id_carrinho,id_produto,tamanho' })
-    setCartMessage(itemError ? 'Não foi possível adicionar este produto.' : 'Produto adicionado ao carrinho.')
+    if (itemError) {
+      setCartMessage('Não foi possível adicionar este produto.')
+    } else {
+      animateProductToCart()
+      setSelectedProduct(null)
+      setCartCount((value) => value + quantity)
+      setCartSuccess(true)
+      window.setTimeout(() => {
+        setCartSuccess(false)
+      }, 1100)
+    }
     setAddingToCart(false)
   }
 
@@ -459,15 +671,28 @@ function StorePage() {
       <header className="store-page__header">
         <h1>Loja</h1>
         <label className="store-page__search"><span className="sr-only">Pesquisar produtos</span><input type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Pesquisar produtos" /><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m16 16 5 5" /></svg></label>
-        <div className="store-page__header-actions"><button type="button" className="store-page__cart-button" aria-label="Abrir carrinho" onClick={() => setShowCart(true)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h6.9a2 2 0 0 0 1.9-1.4L20 7H6" /><circle cx="10" cy="20" r="1" /><circle cx="18" cy="20" r="1" /></svg></button><Icon name="bell" /></div>
+        <div className="store-page__header-actions"><button type="button" className={`store-page__cart-button${cartSuccess ? ' is-updated' : ''}`} aria-label={`Abrir carrinho${cartCount ? `, ${cartCount} itens` : ''}`} onClick={() => setShowCart(true)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h6.9a2 2 0 0 0 1.9-1.4L20 7H6" /><circle cx="10" cy="20" r="1" /><circle cx="18" cy="20" r="1" /></svg>{cartCount > 0 && <span className="store-page__cart-badge" aria-hidden="true">{cartCount > 99 ? '99+' : cartCount}</span>}</button><Icon name="bell" /></div>
       </header>
       <div className="store-page__hero"><img src={bannerProdutosWide} alt="Seu movimento também veste você. Produtos selecionados para acompanhar sua jornada no Studio." /></div>
       <div className="store-page__categories" aria-label="Categorias de produtos">
-        {categories.map((category) => <button type="button" className={`store-page__category${selectedCategory === category.id_categoria ? ' is-selected' : ''}`} key={category.id_categoria} onClick={() => setSelectedCategory(category.id_categoria)}><img src={storeCategoryImages[storeCategoryKind(category.nome)]} alt={category.nome} /></button>)}
+        {categories.map((category, index) => (
+          <button
+            type="button"
+            className={`store-page__category${selectedCategory === category.id_categoria ? ' is-selected' : ''}`}
+            key={category.id_categoria}
+            style={{ '--category-index': index }}
+            aria-pressed={selectedCategory === category.id_categoria}
+            onClick={() => setSelectedCategory(category.id_categoria)}
+          >
+            <span className="store-page__category-visual">
+              <img src={storeCategoryImages[storeCategoryKind(category.nome)]} alt={category.nome} draggable={false} />
+            </span>
+          </button>
+        ))}
       </div>
       <section className="store-page__catalog" aria-live="polite">
         <h2>{selectedCategory == null ? 'Recomendados' : categories.find((category) => category.id_categoria === selectedCategory)?.nome}</h2>
-        {loading ? <p>Carregando produtos...</p> : visibleProducts.length ? <div className="store-page__products">{visibleProducts.map((product) => <button type="button" className="store-page__product" key={product.id_produto} onClick={() => { setSelectedProduct(product); setSelectedSize(product.tamanhos_disponiveis?.[0] || 'Único'); setQuantity(1); setCartMessage('') }}>{imageFor(product) ? <img src={imageFor(product)} alt="" /> : <span className="store-page__product-art" aria-hidden="true" />}<strong>{product.nome}</strong><span>{money(product.preco)}</span><em>ou 10x de {installment(product.preco)}</em><small>{product.estoque > 0 ? <>Adicionar <svg className="store-page__cart-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h6.9a2 2 0 0 0 1.9-1.4L20 7H6" /><circle cx="10" cy="20" r="1" /><circle cx="18" cy="20" r="1" /></svg></> : 'Indisponível'}</small></button>)}</div> : <p>Nenhum produto disponível no momento.</p>}
+        {loading ? <p>Carregando produtos...</p> : visibleProducts.length ? <div className="store-page__products">{visibleProducts.map((product) => <button type="button" className="store-page__product" key={product.id_produto} onClick={() => { setSelectedProduct(product); setSelectedSize(product.tamanhos_disponiveis?.[0] || 'Único'); setQuantity(1); setCartMessage(''); setCartSuccess(false) }}>{imageFor(product) ? <img src={imageFor(product)} alt="" /> : <span className="store-page__product-art" aria-hidden="true" />}<strong>{product.nome}</strong><span>{money(product.preco)}</span><em>ou 10x de {installment(product.preco)}</em><small>{product.estoque > 0 ? <>Adicionar <svg className="store-page__cart-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h6.9a2 2 0 0 0 1.9-1.4L20 7H6" /><circle cx="10" cy="20" r="1" /><circle cx="18" cy="20" r="1" /></svg></> : 'Indisponível'}</small></button>)}</div> : <p>Nenhum produto disponível no momento.</p>}
       </section>
       <section className="store-page__pickup" aria-label="Ofertas e retirada de pedidos">
         <img className="store-page__offers" src={bannerOfertas} alt="Ofertas do Studio Keli Dalpian" />
@@ -480,7 +705,7 @@ function StorePage() {
           </div>
         </div>
       </section>
-      {selectedProduct && <div className="store-page__modal-backdrop" role="presentation" onClick={() => setSelectedProduct(null)}><section className="store-page__modal" role="dialog" aria-modal="true" aria-label={selectedProduct.nome} onClick={(event) => event.stopPropagation()}><button type="button" className="store-page__modal-close" aria-label="Fechar produto" onClick={() => setSelectedProduct(null)}></button><div className="store-page__modal-media">{imageFor(selectedProduct) ? <img src={imageFor(selectedProduct)} alt={selectedProduct.nome} /> : <span className="store-page__modal-art" aria-hidden="true" />}</div><div className="store-page__modal-details"><small>{selectedProductCategory?.nome || 'PRODUTO'}</small><h2>{selectedProduct.nome}</h2><p>{selectedProduct.descricao || 'Produto selecionado pelo Studio para sua rotina de dança.'}</p><strong>{money(selectedProduct.preco)}</strong><span className="store-page__modal-stock">? {Number(selectedProduct.estoque || 0) > 0 ? 'Disponível em estoque' : 'Produto sem estoque'}</span><label>Selecione o tamanho</label><div className="store-page__modal-sizes">{productSizes.map((size) => <button type="button" className={selectedSize === size ? 'is-selected' : ''} key={size} onClick={() => setSelectedSize(size)}>{size}</button>)}</div><span className="store-page__modal-size-note">? ✓ Tamanho cadastrado no produto</span><label>Quantidade</label><div className="store-page__modal-quantity"><button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))}>-</button><span>{quantity}</span><button type="button" onClick={() => setQuantity((value) => Math.min(Number(selectedProduct.estoque || 0), value + 1))}>+</button></div><div className="store-page__modal-total"><span>Total</span><strong>{money(Number(selectedProduct.preco || 0) * quantity)}</strong></div><button className="store-page__modal-add" type="button" onClick={addSelectedProductToCart} disabled={!selectedProduct.estoque || addingToCart}>{addingToCart ? 'ADICIONANDO...' : selectedProduct.estoque ? 'ADICIONAR AO CARRINHO' : 'PRODUTO INDISPONVEL'}<svg className="store-page__cart-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h6.9a2 2 0 0 0 1.9-1.4L20 7H6" /><circle cx="10" cy="20" r="1" /><circle cx="18" cy="20" r="1" /></svg></button>{cartMessage && <small className="store-page__modal-cart-message">{cartMessage}</small>}<small className="store-page__modal-pickup">g Retirada disponível no Studio Keli Dalpian</small></div></section></div>}
+      {selectedProduct && <div className="store-page__modal-backdrop" role="presentation" onClick={() => setSelectedProduct(null)}><section className="store-page__modal" role="dialog" aria-modal="true" aria-label={selectedProduct.nome} onClick={(event) => event.stopPropagation()}><button type="button" className="store-page__modal-close" aria-label="Fechar produto" onClick={() => setSelectedProduct(null)}></button><div className="store-page__modal-media">{imageFor(selectedProduct) ? <img src={imageFor(selectedProduct)} alt={selectedProduct.nome} /> : <span className="store-page__modal-art" aria-hidden="true" />}</div><div className="store-page__modal-details"><small>{selectedProductCategory?.nome || 'PRODUTO'}</small><h2>{selectedProduct.nome}</h2><p>{selectedProduct.descricao || 'Produto selecionado pelo Studio para sua rotina de dança.'}</p><strong>{money(selectedProduct.preco)}</strong><span className="store-page__modal-stock">? {Number(selectedProduct.estoque || 0) > 0 ? 'Disponível em estoque' : 'Produto sem estoque'}</span><label>Selecione o tamanho</label><div className="store-page__modal-sizes">{productSizes.map((size) => <button type="button" className={selectedSize === size ? 'is-selected' : ''} key={size} onClick={() => setSelectedSize(size)}>{size}</button>)}</div><span className="store-page__modal-size-note">? ✓ Tamanho cadastrado no produto</span><label>Quantidade</label><div className="store-page__modal-quantity"><button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))}>-</button><span>{quantity}</span><button type="button" onClick={() => setQuantity((value) => Math.min(Number(selectedProduct.estoque || 0), value + 1))}>+</button></div><div className="store-page__modal-total"><span>Total</span><strong>{money(Number(selectedProduct.preco || 0) * quantity)}</strong></div><button className="store-page__modal-add" type="button" onClick={addSelectedProductToCart} disabled={!selectedProduct.estoque || addingToCart}>{addingToCart ? 'ADICIONANDO...' : selectedProduct.estoque ? 'ADICIONAR AO CARRINHO' : 'PRODUTO INDISPONVEL'}<svg className="store-page__cart-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h6.9a2 2 0 0 0 1.9-1.4L20 7H6" /><circle cx="10" cy="20" r="1" /><circle cx="18" cy="20" r="1" /></svg></button>{cartSuccess ? <div className="store-page__modal-success" role="status">✓ Produto adicionado ao carrinho!</div> : cartMessage && <small className="store-page__modal-cart-message">{cartMessage}</small>}<small className="store-page__modal-pickup">g Retirada disponível no Studio Keli Dalpian</small></div></section></div>}
     </section>
   )
 }
@@ -584,7 +809,18 @@ export default function StudentDashboard({ session, navigate }) {
   const [notice, setNotice] = useState('')
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [activeView, setActiveView] = useState('home')
+  const [evolutionAnimationKey, setEvolutionAnimationKey] = useState(0)
+  const [viewTransition, setViewTransition] = useState(false)
   const today = new Date()
+
+  useEffect(() => {
+    if (activeView === 'evolution') setEvolutionAnimationKey((key) => key + 1)
+    setViewTransition(true)
+    const timer = window.setTimeout(() => setViewTransition(false), 460)
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [activeView])
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -700,11 +936,11 @@ export default function StudentDashboard({ session, navigate }) {
 
       <section className="student-content" id="visao-geral" aria-label="Perfil do aluno" tabIndex={-1}>
         <img className="student-content__ribbon" src={studentRibbon} alt="" aria-hidden="true" />
-        <div className="student-workspace">
+        <div className={`student-workspace${viewTransition ? ' is-transitioning' : ''}`}>
           {['home', 'agenda'].includes(activeView) && <header className="student-topbar">
             <h1>Olá, {studentName}!</h1>
             <div className="student-topbar__right">
-              <span className="student-topbar__date"><Icon name="calendar" />{dateLabel}</span>
+              <button type="button" className="student-topbar__date" onClick={() => setActiveView('agenda')} aria-label="Abrir agenda"><Icon name="calendar" />{dateLabel}</button>
               <div className="student-notifications">
                 <button type="button" aria-label="Notificações" aria-expanded={notificationsOpen} aria-controls="student-notifications" onClick={() => setNotificationsOpen((open) => !open)}><Icon name="bell" /></button>
                 {notificationsOpen && <div className="student-notifications__panel" id="student-notifications" role="status">{nextLesson ? `Sua próxima aula será em ${shortDate.format(lessonDate)}, às ${time(nextLesson.horario_inicio)}.` : 'Nenhuma aula agendada no momento.'}</div>}
@@ -715,7 +951,7 @@ export default function StudentDashboard({ session, navigate }) {
           {loading && <div className="student-state" role="status">Carregando seu perfil</div>}
           {!loading && error && <div className="student-state student-state--error" role="alert"><p>{error}</p><button type="button" onClick={() => { setLoading(true); loadDashboard() }}>Tentar novamente</button></div>}
 
-          {activeView === 'profile' ? <ProfilePage student={dashboard.aluno} nextLesson={nextLesson} financial={financial} onFinance={() => setActiveView('attendance')} onStore={() => setActiveView('store')} /> : activeView === 'home' ? <>
+<div className="student-view-content" key={activeView}>          {activeView === 'profile' ? <ProfilePage student={dashboard.aluno} nextLesson={nextLesson} financial={financial} onFinance={() => setActiveView('attendance')} onStore={() => setActiveView('store')} /> : activeView === 'home' ? <>
             <div className="student-hero-layout">
               <section className="student-hero" aria-label="Sua jornada no Studio">
                 <img src={seuMovimento} alt="Seu movimento, sua jornada. Acompanhe suas aulas, evolução e tudo o que acontece no Studio Keli Dalpian." />
@@ -748,7 +984,7 @@ export default function StudentDashboard({ session, navigate }) {
             <section className="student-home-evolution" aria-labelledby="home-evolution-title"><div className="student-home-evolution__header"><h2 id="home-evolution-title">Sua evolução</h2><button type="button" onClick={() => setActiveView('evolution')}>Ver detalhes →</button></div><div className="student-home-evolution__content"><ProgressChart criteria={criteria} /><img src={evolutionStudentImage} alt="Bailarina em movimento" /></div></section>
             {!criteria.length && <p className="student-empty-chart">Sua evolução aparecerá aqui apàs a primeira avaliação.</p>}
 
-          </> : activeView === 'agenda' ? <Agenda scheduledClasses={lessons} today={today} /> : activeView === 'evolution' ? <Evolution criteria={criteria} studentName={studentFullName} evaluation={evolutionEvaluation} evaluationHistory={evaluationHistory} /> : activeView === 'attendance' ? <AttendancePage attendance={attendance} attendanceHistory={attendanceHistory} financial={financial} /> : <StorePage />}
+          </> : activeView === 'agenda' ? <Agenda scheduledClasses={lessons} today={today} /> : activeView === 'evolution' ? <Evolution key={evolutionAnimationKey} animationKey={evolutionAnimationKey} criteria={criteria} studentName={studentFullName} evaluation={evolutionEvaluation} evaluationHistory={evaluationHistory} /> : activeView === 'attendance' ? <AttendancePage attendance={attendance} attendanceHistory={attendanceHistory} financial={financial} /> : <StorePage />}</div>
         </div>
         <footer className="student-footer">Studio Keli Dalpian <span>|</span>  {today.getFullYear()}</footer>
       </section>

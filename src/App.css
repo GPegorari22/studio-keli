@@ -1456,6 +1456,15 @@
   }
 }
 
+/* O site usa estados visuais estáticos, sem animações ou transições. */
+*,
+*::before,
+*::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
 /* Seção Professoras */
 .teachers-section {
   position: relative;
