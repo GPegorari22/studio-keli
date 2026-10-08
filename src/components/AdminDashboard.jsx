@@ -6,7 +6,9 @@ import homeIcon from '../assets/student-icon-home.png'
 import danceIcon from '../assets/student-icon-dance.png'
 import calendarIcon from '../assets/student-icon-calendar.png'
 import chartIcon from '../assets/student-icon-chart.png'
-import logoutIcon from '../assets/student-icon-logout.png'
+import adminLogoutIcon from '../assets/sair-adm.png'
+import adminAgendaIcon from '../assets/agenda-azul.png'
+import adminSapatilhaIcon from '../assets/sapatilha-azul.png'
 import bellIcon from '../assets/student-icon-bell.png'
 import peopleIcon from '../assets/pessoas.png'
 import financeIcon from '../assets/financeiro.png'
@@ -23,18 +25,20 @@ import adminPeopleIcon from '../assets/pessoas-azul-adm.png'
 import balletClassicoImage from '../assets/ballet-classico.png'
 import jazzImage from '../assets/jazz.png'
 import sapateadoImage from '../assets/sapateado.png'
+import centralAvisoImage from '../assets/centralaviso.png'
 import { supabase } from '../lib/supabase.js'
 import './AdminDashboard.css'
 
 const timezone = 'America/Sao_Paulo'
-const imageIcons = { profile: profileIcon, home: homeIcon, dance: danceIcon, calendar: calendarIcon, chart: chartIcon, logout: logoutIcon, bell: bellIcon, people: peopleIcon, finance: financeIcon, bag: bagIcon }
+const imageIcons = { profile: profileIcon, home: homeIcon, dance: danceIcon, calendar: calendarIcon, chart: chartIcon, logout: adminLogoutIcon, bell: bellIcon, people: peopleIcon, finance: financeIcon, bag: bagIcon }
 const statIcons = { people: statPeopleIcon, dance: statDanceIcon, calendar: statCalendarIcon, chart: statChartIcon, bag: statBagIcon }
-const navIcons = { home: adminHomeIcon, users: adminPeopleIcon, dance: danceIcon, calendar: calendarIcon, chart: adminEvolutionIcon, settings: adminSettingsIcon }
+const navIcons = { home: adminHomeIcon, users: adminPeopleIcon, dance: adminSapatilhaIcon, calendar: adminAgendaIcon, chart: adminEvolutionIcon, settings: adminSettingsIcon }
 const navigation = [
   ['dashboard', 'Início', 'home'], ['alunos', 'Alunos', 'users'], ['matriculas', 'Matrículas', 'dance'],
   ['agenda', 'Agenda', 'calendar'], ['frequencia', 'Frequência', 'chart'], ['configuracoes', 'Configurações', 'settings'],
 ]
 const moduleNames = { alunos: 'Alunos', professores: 'Professores', turmas: 'Turmas', agenda: 'Agenda de aulas', frequencia: 'Frequência dos alunos', financeiro: 'Financeiro', matriculas: 'Matrículas', pedidos: 'Pedidos da loja', produtos: 'Produtos', notificacoes: 'Notificações', busca: 'Resultados da busca' }
+navigation[4] = ['financeiro', 'Financeiro', 'chart']
 const columns = {
   alunos: [['nome', 'Aluno'], ['turma', 'Turma'], ['modalidade', 'Modalidade'], ['status', 'Cadastro'], ['alertas', 'Alertas']],
   professores: [['nome', 'Professor'], ['especialidade', 'Especialidade'], ['email', 'E-mail'], ['status', 'Status']],
@@ -66,6 +70,7 @@ function Icon({ name, className = '', tone = 'default' }) {
     'enroll-pending': <><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" /></>,
     'enroll-new': <><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M8 2v4m8-4v4M5 9h14" /></>,
     'enroll-closed': <><circle cx="12" cy="12" r="8.5" /><path d="m8 12 2.5 2.5L16 9" /></>,
+    star: <><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3Z" /></>,
     search: <><circle cx="10.5" cy="10.5" r="6.8" /><path d="m16 16 5 5" /></>,
     warning: <><path d="m12 3 10 18H2L12 3Z" /><path d="M12 9v5m0 3h.01" /></>,
     filter: <><path d="M4 6h16M7 12h10m-7 6h4" /></>,
@@ -94,6 +99,7 @@ function dateRange(period, today) {
   return { inicio: today.slice(0, 4) + '-01-01', fim: today }
 }
 function percentage(value) { return value == null ? '—' : Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%' }
+function money(value) { return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }) }
 function lessonState(lesson, now) {
   const saved = String(lesson.status || '').toLocaleLowerCase('pt-BR')
   if (/cancelad|suspens|confirmar|pendente/.test(saved)) return { label: lesson.status, tone: 'muted' }
@@ -133,6 +139,10 @@ export default function AdminDashboard({ session, sessionLoading = false, naviga
   const [listLoading, setListLoading] = useState(false)
   const [listError, setListError] = useState('')
   const [selected, setSelected] = useState(null)
+  const [enrollmentModalOpen, setEnrollmentModalOpen] = useState(false)
+  const [enrollmentLead, setEnrollmentLead] = useState(null)
+  const [classModalOpen, setClassModalOpen] = useState(false)
+  const [selectedClass, setSelectedClass] = useState(null)
   const workspaceRef = useRef(null)
   const today = studioDate(now)
   const range = dateRange(period, today)
@@ -227,9 +237,15 @@ export default function AdminDashboard({ session, sessionLoading = false, naviga
           : (loading || sessionLoading) && !dashboard ? <StateMessage title="Carregando dados do Studio…" loading />
             : error ? <StateMessage title={error} action={refresh} />
               : dashboard && view === 'dashboard' ? <DashboardContent data={dashboard} now={now} period={period} setPeriod={setPeriod} classId={classId} setClassId={setClassId} openView={openView} loading={loading} />
-                : dashboard && ['perfil', 'configuracoes'].includes(view) ? <ProfileView data={dashboard.usuario} settings={view === 'configuracoes'} openView={openView} />
+                : dashboard && view === 'configuracoes' ? <AdminSettingsWorkspace data={dashboard} openView={openView} />
+                : dashboard && view === 'perfil' ? <ProfileView data={dashboard.usuario} settings={false} openView={openView} />
                 : dashboard && view === 'alunos' ? <PeopleView data={dashboard} list={list} setList={setList} records={records} loading={listLoading} error={listError} refresh={refresh} openView={openView} onSelect={setSelected} turmas={dashboard.turmas} classId={classId} setClassId={setClassId} />
-                  : dashboard && view === 'matriculas' ? <MatriculasView data={dashboard} list={list} setList={setList} records={records} loading={listLoading} error={listError} refresh={refresh} openView={openView} onSelect={setSelected} />
+                : dashboard && view === 'matriculas' ? <MatriculasView data={dashboard} list={list} setList={setList} records={records} loading={listLoading} error={listError} refresh={refresh} openView={openView} onSelect={setSelected} onOpenEnrollment={(lead = null) => { setEnrollmentLead(lead); setEnrollmentModalOpen(true) }} />
+                : dashboard && view === 'turmas' ? <TurmasView onBack={() => openView('dashboard')} onOpenClass={(turma = null) => { setSelectedClass(turma); setClassModalOpen(true) }} />
+                  : dashboard && view === 'agenda' ? <AgendaView today={today} openView={openView} />
+                  : dashboard && view === 'financeiro' ? <FinanceiroView data={dashboard} list={list} setList={setList} records={records} loading={listLoading} error={listError} refresh={refresh} openView={openView} />
+                  : dashboard && view === 'notificacoes' ? <NotificationsView data={dashboard} records={records} loading={listLoading} error={listError} refresh={refresh} openView={openView} onSelect={setSelected} />
+                  : dashboard && view === 'relatorios' ? <ReportsView data={dashboard} openView={openView} />
                   : dashboard && <RecordsView view={view} list={list} setList={setList} data={records} loading={listLoading} error={listError} refresh={refresh} openView={openView} onSelect={setSelected} turmas={dashboard.turmas} classId={classId} setClassId={setClassId} range={range} now={now} />}
       </div>
       <footer className="admin-footer">Studio Keli Dalpian&nbsp; | &nbsp;© {today.slice(0, 4)}</footer>
@@ -237,6 +253,8 @@ export default function AdminDashboard({ session, sessionLoading = false, naviga
     {selected && (selected._modulo === 'alunos'
       ? <StudentProfileDialog student={selected} onClose={() => setSelected(null)} />
       : <RecordDialog record={selected} onClose={() => setSelected(null)} onRead={readNotification} />)}
+    {enrollmentModalOpen && <EnrollmentModal initialStudent={enrollmentLead} turmas={dashboard?.turmas || []} onClose={() => { setEnrollmentModalOpen(false); setEnrollmentLead(null) }} onSaved={() => { setEnrollmentModalOpen(false); setEnrollmentLead(null); refresh() }} />}
+    {classModalOpen && <ClassModal turma={selectedClass} onClose={() => { setClassModalOpen(false); setSelectedClass(null) }} onSaved={() => { setClassModalOpen(false); setSelectedClass(null); refresh() }} />}
   </main>
 }
 
@@ -311,7 +329,7 @@ function Attention({ data, openView }) {
     { key: 'loja', icon: 'bag', title: 'Loja', text: 'pedidos aguardando retirada', action: 'Ver pedidos', module: 'pedidos', filter: 'retirada', color: 'blue' },
   ]
   return <section className="admin-attention" aria-label="Pendências do Studio"><div className="admin-attention-heading"><Icon name="warning" /><div><h2>Atenção necessária</h2><p>Confira os pontos que precisam da sua atenção.</p></div></div>
-    <div className="admin-alert-grid">{alerts.map((alert) => <article key={alert.key} className={'admin-alert admin-alert--' + alert.color}><span className="admin-alert-icon"><Icon name={alert.icon} /></span><div><h3>{alert.title}</h3><p><strong>{data?.[alert.key] ?? 0}</strong> {alert.text}</p><button type="button" onClick={() => openView(alert.module, alert.filter)}>{alert.action}<Icon name="arrow" /></button></div></article>)}</div>
+    <div className="admin-alert-grid">{alerts.map((alert) => <article key={alert.key} className={'admin-alert admin-alert--' + alert.color}><span className="admin-alert-icon"><Icon name={alert.icon} /></span><div><h3>{alert.title}</h3><p><strong>{data?.pendencias?.[alert.key] ?? 0}</strong> {alert.text}</p><button type="button" onClick={() => openView(alert.module, alert.filter)}>{alert.action}<Icon name="arrow" /></button></div></article>)}</div>
   </section>
 }
 function Avatar({ name, photo }) {
@@ -328,23 +346,262 @@ function Students({ students, openView }) {
     {!students?.length && <p className="admin-empty">Nenhuma matrícula registrada.</p>}
   </article>
 }
-function MatriculasView({ data, list, setList, records, loading, error, refresh, openView, onSelect }) {
-  const registrations = records?.registros || []
-  const pending = registrations.filter((item) => /pendente|aguardando/i.test(item.status || '')).length
-  const active = registrations.filter((item) => /ativo|ativa/i.test(item.status || '')).length
+function MatriculasView({ data, list, setList, loading, refresh, openView, onOpenEnrollment }) {
+  const [potentialStudents, setPotentialStudents] = useState([])
+  const [potentialLoading, setPotentialLoading] = useState(true)
+  const [potentialError, setPotentialError] = useState('')
+  const pending = potentialStudents.length
+  const active = data?.indicadores?.alunos_ativos || 0
     const modalities = [
-      ['Sapateado', sapateadoImage, false],
-      ['Ballet clássico', balletClassicoImage, true],
-      ['Jazz', jazzImage, false],
+      ['Sapateado', sapateadoImage],
+      ['Ballet clássico', balletClassicoImage],
+      ['Jazz', jazzImage],
     ]
   const changeSearch = (event) => setList((current) => ({ ...current, busca: event.target.value, pagina: 0 }))
+  useEffect(() => {
+    let activeRequest = true
+    setPotentialLoading(true)
+    setPotentialError('')
+    supabase.rpc('listar_possiveis_alunos_admin').then(({ data: leads, error: requestError }) => {
+      if (!activeRequest) return
+      if (requestError || !Array.isArray(leads)) {
+        setPotentialError('Não foi possível carregar os potenciais alunos.')
+        setPotentialStudents([])
+      } else setPotentialStudents(leads)
+      setPotentialLoading(false)
+    }).catch(() => {
+      if (activeRequest) {
+        setPotentialError('Não foi possível conectar ao banco.')
+        setPotentialLoading(false)
+      }
+    })
+    return () => { activeRequest = false }
+  }, [data, list.busca])
+  const filteredPotentialStudents = potentialStudents.filter((student) => {
+    const query = String(list.busca || '').toLocaleLowerCase('pt-BR')
+    return !query || [student.nome, student.email, student.telefone].some((value) => String(value || '').toLocaleLowerCase('pt-BR').includes(query))
+  })
   return <section className="admin-enrollments" aria-busy={loading}>
     <header className="admin-enrollments__heading"><div><h2>Matrículas</h2><p>Acompanhe o processamento e andamento<br />das matrículas do Studio.</p></div><div className="admin-enrollments__actions"><button type="button" aria-label="Pesquisar" onClick={() => document.getElementById('admin-enrollment-search')?.focus()}><Icon name="search" /></button><button type="button" aria-label="Notificações" onClick={() => openView('notificacoes')}><Icon name="bell" /></button></div></header>
-    <div className="admin-enrollments__stats"><article><span><Icon name="enroll-active" /></span><small>Matrículas ativas</small><strong>{active || data?.indicadores?.alunos_ativos || 0}</strong><em>↑ 1 este mês</em></article><article><span><Icon name="enroll-pending" /></span><small>Aguardando aprovação</small><strong>{pending || data?.pendencias?.matriculas || 0}</strong><em>↑ 2 este mês</em></article><article><span><Icon name="enroll-new" /></span><small>Novos este mês</small><strong>{registrations.length}</strong><em>↑ 2,3%</em></article><article><span><Icon name="enroll-closed" /></span><small>Encerradas</small><strong>04</strong><em>Concluídas</em></article><article className="is-featured"><strong>Nova matrícula</strong><p>Cadastre um novo aluno no Studio.</p><button type="button" onClick={() => openView('alunos')}>Cadastrar matrícula</button></article></div>
-    <section className="admin-enrollments__requests"><header><div><h3><Icon name="tab-overview" />Solicitações de matrícula</h3><p>Confira e gerencie as solicitações de matrícula pendentes.</p></div><select aria-label="Filtrar solicitações"><option>Todas as solicitações</option><option>Pendentes</option><option>Aprovadas</option></select></header><label className="admin-enrollments__search"><Icon name="search" /><input id="admin-enrollment-search" value={list.busca} onChange={changeSearch} placeholder="Buscar aluno..." /></label>{loading ? <StateMessage title="Carregando matrículas..." loading /> : error ? <StateMessage title={error} action={refresh} /> : <div className="admin-enrollments__table-wrap"><table><thead><tr><th>Aluno</th><th>Modalidade</th><th>Data da solicitação</th><th>Status</th><th>Ações</th></tr></thead><tbody>{registrations.slice(0, 8).map((record) => <tr key={record.id}><td><span className="admin-enrollment-person"><Avatar name={record.nome} photo={record.foto} /><span><strong>{record.nome || 'Aluno'}</strong><small>#{String(record.id).padStart(4, '0')}</small></span></span></td><td>{record.turma || record.modalidade || 'Ballet clássico'}</td><td>{dateLabel(record.data)}</td><td><span className={'admin-enrollment-status ' + (/pendente|aguardando/i.test(record.status || '') ? 'pending' : 'active')}>{record.status || 'Pendente'}</span></td><td><button type="button" onClick={() => onSelect({ ...record, _modulo: 'alunos' })}>Ver</button><button type="button" onClick={() => onSelect({ ...record, _modulo: 'alunos' })}>{/pendente|aguardando/i.test(record.status || '') ? 'Aprovar' : 'Detalhes'}</button></td></tr>)}</tbody></table>{!registrations.length && <p className="admin-list-empty">Nenhuma solicitação encontrada.</p>}</div>}</section>
-    <section className="admin-enrollments__modalities"><h3>Modalidades</h3><p>Aqui você pode administrar as modalidades<br />de dança disponíveis no Studio.</p><div className="modalities-list">{modalities.map(([name, image, featured]) => <button className={'modality admin-enrollments__modality' + (featured ? ' modality--featured' : '')} key={name} type="button" aria-label={'Administrar ' + name} onClick={() => openView('turmas')}><div className="modality-card"><div className="modality-art"><img src={image} alt="" /></div><h2>{name}</h2></div><span className="admin-enrollments__modality-action">Administrar</span></button>)}</div><button className="admin-enrollments__add" type="button" onClick={() => openView('turmas')}>Adicionar +</button></section>
+    <div className="admin-enrollments__stats"><article><span><Icon name="enroll-active" /></span><small>Matrículas ativas</small><strong>{active}</strong><em>Alunos matriculados</em></article><article><span><Icon name="enroll-pending" /></span><small>Aguardando aprovação</small><strong>{pending}</strong><em>Potenciais alunos</em></article><article><span><Icon name="enroll-new" /></span><small>Pré-cadastros</small><strong>{potentialStudents.length}</strong><em>Aula experimental</em></article><article><span><Icon name="enroll-closed" /></span><small>Encerradas</small><strong>04</strong><em>Concluídas</em></article><article className="is-featured"><strong>Nova matrícula</strong><p>Cadastre um novo aluno no Studio.</p><button type="button" onClick={() => onOpenEnrollment()}>Fazer matrícula</button></article></div>
+    <section className="admin-enrollments__requests"><header><div><h3><Icon name="tab-overview" />Solicitações de aula experimental</h3><p>Potenciais alunos aguardando aprovação para matrícula.</p></div><select aria-label="Filtrar solicitações"><option>Todos os potenciais alunos</option></select></header><label className="admin-enrollments__search"><Icon name="search" /><input id="admin-enrollment-search" value={list.busca} onChange={changeSearch} placeholder="Buscar potencial aluno..." /></label>{potentialLoading ? <StateMessage title="Carregando potenciais alunos..." loading /> : potentialError ? <StateMessage title={potentialError} action={refresh} /> : <div className="admin-enrollments__table-wrap"><table><thead><tr><th>Potencial aluno</th><th>Modalidade</th><th>Data da solicitação</th><th>Status</th><th>Ações</th></tr></thead><tbody>{filteredPotentialStudents.slice(0, 8).map((lead) => <tr key={lead.id_possivel_aluno}><td><span className="admin-enrollment-person"><Avatar name={lead.nome} /><span><strong>{lead.nome || 'Potencial aluno'}</strong><small>Pré-cadastro #{String(lead.id_possivel_aluno).padStart(4, '0')}</small></span></span></td><td>{lead.modalidade || lead.turma || 'Não informada'}</td><td>{dateLabel(lead.data_contato || lead.data_aula_experimental)}</td><td><span className="admin-enrollment-status pending">{lead.status || 'NOVO'}</span></td><td><button type="button" onClick={() => onOpenEnrollment(lead)}>Aprovar</button></td></tr>)}</tbody></table>{!filteredPotentialStudents.length && <p className="admin-list-empty">Nenhum potencial aluno aguardando aprovação.</p>}</div>}</section>
+    <section className="admin-enrollments__modalities"><h3>Modalidades</h3><p>Aqui você pode administrar as modalidades<br />de dança disponíveis no Studio.</p><div className="modalities-list">{modalities.map(([name, image], index) => <button className="modality admin-enrollments__modality" key={`${name}-${index}`} type="button" aria-label={'Administrar ' + name} onClick={() => openView('turmas')}><div className="modality-card"><div className="modality-art"><img src={image} alt="" /></div><h2>{name}</h2></div><span className="admin-enrollments__modality-action">Administrar</span></button>)}</div><button className="admin-enrollments__add" type="button" onClick={() => openView('turmas')}>Adicionar +</button></section>
   </section>
 }
+
+function EnrollmentModal({ initialStudent = null, turmas, onClose, onSaved }) {
+  const [potentialStudents, setPotentialStudents] = useState([])
+  const [studentMode, setStudentMode] = useState('existing')
+  const [studentQuery, setStudentQuery] = useState('')
+  const [selectedStudent, setSelectedStudent] = useState(initialStudent)
+  const [minor, setMinor] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [classOptions, setClassOptions] = useState(turmas)
+  const [classesLoading, setClassesLoading] = useState(false)
+  const [form, setForm] = useState({
+    nome: initialStudent?.nome || '',
+    email: initialStudent?.email || '',
+    telefone: initialStudent?.telefone || '',
+    cpf: '',
+    dataNascimento: initialStudent?.data_nascimento || '',
+    modalidade: 'Ballet clássico',
+    turmaId: String(turmas[0]?.id || ''),
+    turma: turmas[0]?.nome || '',
+    professor: turmas[0]?.professora || 'Keli Dalpian',
+    inicio: studioDate(),
+    termino: '',
+    plano: 'Mensal',
+    valor: '150,00',
+    vencimento: '10',
+    responsavel: initialStudent?.nome_responsavel || '',
+    telefoneResponsavel: initialStudent?.telefone_responsavel || '',
+    emailResponsavel: '',
+    observacoes: initialStudent?.observacoes || '',
+    status: 'Ativa',
+  })
+
+  useEffect(() => {
+    const closeWithEscape = (event) => event.key === 'Escape' && onClose()
+    document.addEventListener('keydown', closeWithEscape)
+    return () => document.removeEventListener('keydown', closeWithEscape)
+  }, [onClose])
+
+  useEffect(() => {
+    let active = true
+    supabase.rpc('listar_possiveis_alunos_admin').then(({ data, error }) => {
+      if (!active) return
+      if (!error && Array.isArray(data)) {
+        setPotentialStudents(data)
+        if (data.length) {
+          const firstLead = initialStudent || data[0]
+          setSelectedStudent(firstLead)
+          setForm((current) => ({ ...current, nome: firstLead.nome || '', email: firstLead.email || '', telefone: firstLead.telefone || '', dataNascimento: firstLead.data_nascimento || '', responsavel: firstLead.nome_responsavel || '', telefoneResponsavel: firstLead.telefone_responsavel || '', observacoes: firstLead.observacoes || '' }))
+        }
+      }
+    }).catch(() => {})
+    return () => { active = false }
+  }, [initialStudent])
+
+  useEffect(() => {
+    let active = true
+    supabase.rpc('listar_turmas_admin').then(({ data, error }) => {
+      if (!active) return
+      if (!error && Array.isArray(data)) {
+        setClassOptions(data)
+        if (data.length) setForm((current) => {
+          const firstClass = data.find((turma) => String(turma.id) === String(current.turmaId)) || data[0]
+          return { ...current, turmaId: String(firstClass.id), turma: firstClass.nome, modalidade: firstClass.modalidade || current.modalidade, professor: firstClass.professora || current.professor }
+        })
+      }
+      setClassesLoading(false)
+    }).catch(() => { if (active) setClassesLoading(false) })
+    return () => { active = false }
+  }, [])
+
+  const setField = (field, value) => setForm((current) => ({ ...current, [field]: value }))
+  const filteredStudents = potentialStudents.filter((student) => {
+    const query = studentQuery.toLocaleLowerCase('pt-BR')
+    return [student.nome, student.email, student.telefone].some((value) => String(value || '').toLocaleLowerCase('pt-BR').includes(query))
+  })
+  const normalize = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR')
+  const modalityOptions = [...new Set(classOptions.map((turma) => turma.modalidade).filter(Boolean))]
+  const availableClasses = classOptions.filter((turma) => !turma.modalidade || !form.modalidade || normalize(turma.modalidade) === normalize(form.modalidade))
+  const selectedClass = classOptions.find((turma) => String(turma.id) === String(form.turmaId)) || classOptions.find((turma) => turma.nome === form.turma)
+  useEffect(() => {
+    if (studentMode !== 'existing' || !selectedStudent?.id_turma) return
+    const requestedClass = classOptions.find((turma) => String(turma.id) === String(selectedStudent.id_turma))
+    if (!requestedClass) return
+    setForm((current) => ({ ...current, turmaId: String(requestedClass.id), turma: requestedClass.nome || '', modalidade: requestedClass.modalidade || current.modalidade, professor: requestedClass.professora || current.professor }))
+  }, [studentMode, selectedStudent, classOptions])
+  const changeModality = (value) => {
+    const nextClass = classOptions.find((turma) => !turma.modalidade || normalize(turma.modalidade) === normalize(value))
+    setForm((current) => ({ ...current, modalidade: value, turmaId: String(nextClass?.id || ''), turma: nextClass?.nome || '', professor: nextClass?.professora || current.professor }))
+  }
+  const changeClass = (value) => {
+    const nextClass = classOptions.find((turma) => String(turma.id) === value)
+    setForm((current) => ({ ...current, turmaId: value, turma: nextClass?.nome || '', professor: nextClass?.professora || current.professor, modalidade: nextClass?.modalidade || current.modalidade }))
+  }
+
+  const selectStudent = (student) => {
+    setSelectedStudent(student)
+    setForm((current) => ({ ...current, nome: student.nome || '', email: student.email || '', telefone: student.telefone || '', cpf: student.cpf || '', dataNascimento: student.data_nascimento || '', responsavel: student.nome_responsavel || '', telefoneResponsavel: student.telefone_responsavel || '', observacoes: student.observacoes || '' }))
+  }
+
+  const submit = async (event) => {
+    event.preventDefault()
+    if (saving) return
+    const turmaSelecionada = classOptions.find((turma) => String(turma.id) === String(form.turmaId))
+    if (!turmaSelecionada?.id) {
+      setSaveError('Selecione uma turma válida antes de salvar.')
+      return
+    }
+    setSaving(true)
+    setSaveError('')
+    const valor = Number(String(form.valor || '').replace(',', '.'))
+    const enrollmentPayload = {
+      p_nome: form.nome,
+      p_email: form.email,
+      p_telefone: form.telefone || null,
+      p_cpf: form.cpf || null,
+      p_data_nascimento: form.dataNascimento || null,
+      p_id_turma: Number(turmaSelecionada.id),
+      p_data_matricula: form.inicio,
+      p_data_termino: form.termino || null,
+      p_plano: form.plano,
+      p_valor: Number.isFinite(valor) ? valor : null,
+      p_vencimento_dia: Number(form.vencimento),
+      p_nome_responsavel: form.responsavel || null,
+      p_telefone_responsavel: form.telefoneResponsavel || null,
+      p_email_responsavel: form.emailResponsavel || null,
+      p_observacoes: form.observacoes || null,
+      p_status: form.status,
+    }
+    const rpcName = studentMode === 'existing' && selectedStudent?.id_possivel_aluno ? 'aprovar_possivel_aluno_admin' : 'criar_matricula_admin'
+    const rpcPayload = rpcName === 'aprovar_possivel_aluno_admin'
+      ? { p_id_possivel_aluno: Number(selectedStudent.id_possivel_aluno), ...enrollmentPayload }
+      : { ...enrollmentPayload, p_id_aluno: null }
+    const { error } = await supabase.rpc(rpcName, rpcPayload)
+    if (error) {
+      setSaveError(error.message || 'Não foi possível salvar a matrícula.')
+      setSaving(false)
+      return
+    }
+    setSaved(true)
+    window.setTimeout(() => onSaved(), 650)
+  }
+
+  return <div className="admin-enrollment-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+    <section className="admin-enrollment-modal" role="dialog" aria-modal="true" aria-labelledby="enrollment-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+      <header className="admin-enrollment-modal__header">
+        <div>
+          <span className="admin-enrollment-modal__eyebrow"><Icon name="tab-enrollment" /> Nova matrícula</span>
+          <h2 id="enrollment-modal-title">Cadastrar matrícula</h2>
+          <p>Preencha os dados do aluno e as informações da nova matrícula.</p>
+        </div>
+        <button className="admin-enrollment-modal__close" type="button" aria-label="Fechar modal" onClick={onClose}><Icon name="close" /></button>
+      </header>
+
+      <form onSubmit={submit}>
+        <div className="admin-enrollment-modal__flow" aria-label="Resumo da matrícula">
+          <span>Aluno</span><b>›</b><strong>{form.modalidade}</strong><b>›</b><span>{selectedClass?.nome || form.turma || 'Selecione a turma'}</span><b>›</b><span>{selectedClass?.professora || form.professor || 'Professor'}</span><b>›</b><strong>{form.plano}</strong>
+        </div>
+
+        <div className="admin-enrollment-modal__body">
+          <div className="admin-enrollment-modal__left">
+            <section className="admin-enrollment-modal__panel">
+              <div className="admin-enrollment-modal__section-title"><Icon name="tab-personal" /><h3>Dados do aluno</h3></div>
+              <div className="admin-enrollment-modal__tabs"><button type="button" className={studentMode === 'existing' ? 'is-active' : ''} onClick={() => setStudentMode('existing')}>Pré-cadastro / aula teste</button><button type="button" className={studentMode === 'new' ? 'is-active' : ''} onClick={() => { setStudentMode('new'); setSelectedStudent(null); setForm((current) => ({ ...current, nome: '', email: '', telefone: '', cpf: '', dataNascimento: '' })) }}>Novo aluno</button></div>
+              {studentMode === 'existing' ? <>
+                <label className="admin-enrollment-modal__search"><Icon name="search" /><input value={studentQuery} onChange={(event) => setStudentQuery(event.target.value)} placeholder="Pesquise por nome, telefone ou e-mail..." /></label>
+                {selectedStudent ? <button className="admin-enrollment-modal__student" type="button" onClick={() => setStudentMode('new')}><Avatar name={selectedStudent.nome} photo={selectedStudent.foto} /><span><strong>{selectedStudent.nome}</strong><small>Pré-cadastro #{String(selectedStudent.id || '').padStart(4, '0')}</small><small>{selectedStudent.email || 'E-mail não informado'}{selectedStudent.telefone ? ' · ' + selectedStudent.telefone : ''}</small></span><em>Potencial aluno</em></button> : <div className="admin-enrollment-modal__empty">{filteredStudents.length ? 'Selecione um potencial aluno para continuar.' : 'Nenhum pré-cadastro de aula teste encontrado.'}</div>}
+                {filteredStudents.length > 0 && selectedStudent && studentQuery && filteredStudents.every((student) => student.id !== selectedStudent.id) && <div className="admin-enrollment-modal__student-results">{filteredStudents.map((student) => <button type="button" key={student.id} onClick={() => selectStudent(student)}>{student.nome}</button>)}</div>}
+              </> : <div className="admin-enrollment-modal__form-grid admin-enrollment-modal__form-grid--student">
+                <Field label="Nome completo" required value={form.nome} onChange={(value) => setField('nome', value)} className="wide" />
+                <Field label="Data de nascimento" type="date" required value={form.dataNascimento} onChange={(value) => setField('dataNascimento', value)} />
+                <Field label="CPF" required value={form.cpf} onChange={(value) => setField('cpf', value)} placeholder="000.000.000-00" />
+                <Field label="E-mail" type="email" required value={form.email} onChange={(value) => setField('email', value)} />
+                <Field label="Telefone" required value={form.telefone} onChange={(value) => setField('telefone', value)} placeholder="(00) 00000-0000" />
+              </div>}
+            </section>
+
+            <section className="admin-enrollment-modal__panel">
+              <div className="admin-enrollment-modal__section-title"><Icon name="tab-enrollment" /><h3>Dados da matrícula</h3></div>
+              <div className="admin-enrollment-modal__form-grid">
+                <SelectField label="Modalidade" required value={form.modalidade} onChange={changeModality} options={modalityOptions.length ? modalityOptions : ['Ballet clássico', 'Jazz', 'Sapateado']} />
+                <label className="admin-enrollment-modal__field"><span>Turma<b>*</b></span><div><select value={form.turmaId} onChange={(event) => changeClass(event.target.value)} required disabled={classesLoading || !availableClasses.length}><option value="">{classesLoading ? 'Carregando turmas...' : 'Selecione uma turma'}</option>{availableClasses.map((turma) => <option key={turma.id} value={turma.id}>{turma.nome}{turma.horario ? ' · ' + String(turma.horario).slice(0, 5) : ''}</option>)}</select></div></label>
+                <Field label="Data de início" required type="date" value={form.inicio} onChange={(value) => setField('inicio', value)} />
+                <Field label="Data de término (opcional)" type="date" value={form.termino} onChange={(value) => setField('termino', value)} />
+                <SelectField label="Plano de pagamento" required value={form.plano} onChange={(value) => setField('plano', value)} options={['Mensal', 'Trimestral', 'Semestral', 'Anual']} />
+                <Field label="Valor da matrícula" value={form.valor} onChange={(value) => setField('valor', value)} prefix="R$" />
+              </div>
+              <div className="admin-enrollment-modal__note"><Icon name="warning" />A matrícula será ativada após o pagamento da primeira mensalidade.</div>
+            </section>
+          </div>
+
+          <div className="admin-enrollment-modal__right">
+            <section className="admin-enrollment-modal__panel admin-enrollment-modal__selected-class"><div className="admin-enrollment-modal__section-title"><Icon name="tab-class" /><h3>Modalidade e turma selecionada</h3></div><div className="admin-enrollment-modal__class-icon"><Icon name="tab-class" /></div><strong>{form.modalidade}</strong><b>{selectedClass?.nome || form.turma || 'Selecione uma turma'}</b><p>As informações da modalidade e da turma serão exibidas aqui.</p></section>
+            <section className="admin-enrollment-modal__panel"><div className="admin-enrollment-modal__section-title"><Icon name="tab-personal" /><h3>Responsável</h3></div><div className="admin-enrollment-modal__form-grid"><Field label="Nome do responsável" value={form.responsavel} onChange={(value) => setField('responsavel', value)} className="wide" /><Field label="Telefone" value={form.telefoneResponsavel} onChange={(value) => setField('telefoneResponsavel', value)} placeholder="(00) 00000-0000" /><Field label="E-mail" type="email" value={form.emailResponsavel} onChange={(value) => setField('emailResponsavel', value)} placeholder="email@exemplo.com" /></div><label className="admin-enrollment-modal__check"><input type="checkbox" checked={minor} onChange={(event) => setMinor(event.target.checked)} />Aluno menor de idade</label></section>
+            <section className="admin-enrollment-modal__panel"><div className="admin-enrollment-modal__section-title"><Icon name="document" /><h3>Observações</h3></div><textarea value={form.observacoes} onChange={(event) => setField('observacoes', event.target.value)} placeholder="Informações adicionais (opcional)..." maxLength={500} /><small className="admin-enrollment-modal__counter">{form.observacoes.length}/500</small><div className="admin-enrollment-modal__status"><span>Status da matrícula</span><label><input type="radio" name="enrollment-status" checked={form.status === 'Ativa'} onChange={() => setField('status', 'Ativa')} />Ativa</label><label><input type="radio" name="enrollment-status" checked={form.status === 'Pendente'} onChange={() => setField('status', 'Pendente')} />Pendente</label></div></section>
+          </div>
+        </div>
+
+        {saveError && <p className="admin-enrollment-modal__error" role="alert">{saveError}</p>}
+        <footer className="admin-enrollment-modal__footer"><button type="button" onClick={onClose}>Cancelar</button><button className="is-primary" type="submit" disabled={saving || saved}><Icon name="tab-enrollment" />{saved ? 'Matrícula criada!' : saving ? 'Salvando...' : 'Salvar matrícula'}</button></footer>
+      </form>
+    </section>
+  </div>
+}
+
+function Field({ label, value, onChange, type = 'text', placeholder = '', required = false, className = '', prefix = '' }) {
+  return <label className={'admin-enrollment-modal__field ' + className}><span>{label}{required && <b>*</b>}</span><div>{prefix && <em>{prefix}</em>}<input type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} required={required} /></div></label>
+}
+
+function SelectField({ label, value, onChange, options, required = false }) {
+  return <label className="admin-enrollment-modal__field"><span>{label}{required && <b>*</b>}</span><div><select value={value} onChange={(event) => onChange(event.target.value)} required={required}>{options.map((option) => <option key={option} value={option}>{option}</option>)}</select></div></label>
+}
+
 function PeopleView({ data, list, setList, records, loading, error, refresh, openView, onSelect, turmas, classId, setClassId }) {
   const stats = data.indicadores || {}
   const pending = data.pendencias?.matriculas || 0
@@ -402,6 +659,436 @@ function renderValue(key, value) {
   if (typeof value === 'boolean') return value ? 'Sim' : 'Não'
   return String(value)
 }
+function TurmasView({ onBack, onOpenClass }) {
+  const [turmas, setTurmas] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const loadClasses = () => {
+    setLoading(true)
+    setError('')
+    supabase.rpc('listar_turmas_admin').then(({ data, error: requestError }) => {
+      if (requestError || !Array.isArray(data)) setError(requestError?.message || 'Não foi possível carregar as turmas.')
+      else setTurmas(data)
+      setLoading(false)
+    }).catch(() => { setError('Não foi possível conectar ao banco.'); setLoading(false) })
+  }
+  useEffect(() => { loadClasses() }, [])
+  return <section className="admin-classes-view" aria-busy={loading}>
+    <header className="admin-classes-view__heading"><div><button className="admin-back" type="button" onClick={onBack}>← Visão geral</button><h2>Turmas</h2><p>Cadastre e administre as turmas disponíveis no Studio.</p></div><button className="admin-action" type="button" onClick={() => onOpenClass()}>Cadastrar turma</button></header>
+    {loading ? <StateMessage title="Carregando turmas..." loading /> : error ? <StateMessage title={error} action={loadClasses} /> : <div className="admin-classes-table-wrap"><table className="admin-classes-table"><thead><tr><th>Turma</th><th>Modalidade</th><th>Professora</th><th>Dia e horário</th><th>Vagas</th><th>Status</th><th>Ação</th></tr></thead><tbody>{turmas.map((turma) => <tr key={turma.id}><td><strong>{turma.nome}</strong></td><td>{turma.modalidade || '—'}</td><td>{turma.professora || '—'}</td><td>{turma.dia || '—'} · {String(turma.horario || '').slice(0, 5) || '—'}</td><td>{turma.capacidade || '—'}</td><td><span className="admin-class-status">{turma.status || 'ativo'}</span></td><td><button type="button" onClick={() => onOpenClass(turma)}>Editar</button></td></tr>)}</tbody></table>{!turmas.length && <p className="admin-list-empty">Nenhuma turma cadastrada.</p>}</div>}
+  </section>
+}
+
+function AgendaView({ today, openView }) {
+  const [cursor, setCursor] = useState(() => new Date(today + 'T12:00:00'))
+  const [selectedDate, setSelectedDate] = useState(today)
+  const [events, setEvents] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const monthTitle = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(cursor)
+  const monthStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1, 12)
+  const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0, 12)
+  const isoDate = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  const loadAgenda = () => {
+    setLoading(true)
+    setError('')
+    supabase.rpc('admin_listagem', { p_modulo: 'agenda', p_busca: '', p_filtro: '', p_inicio: isoDate(monthStart), p_fim: isoDate(monthEnd), p_turma: null, p_pagina: 0 }).then(({ data, error: requestError }) => {
+      if (requestError || !data) setError(requestError?.message || 'Não foi possível carregar a agenda.')
+      else setEvents(data.registros || [])
+      setLoading(false)
+    }).catch(() => { setError('Não foi possível conectar ao banco.'); setLoading(false) })
+  }
+  useEffect(() => { loadAgenda() }, [cursor.getFullYear(), cursor.getMonth()])
+  useEffect(() => {
+    const notice = document.querySelector('.admin-agenda-notice')
+    const publishButton = notice?.querySelector('button:last-child')
+    if (!notice || !publishButton) return undefined
+    const fields = notice.querySelectorAll('input, select, textarea')
+    const publish = async () => {
+      const title = fields[0]?.value?.trim()
+      const recipients = 'alunos'
+      const type = fields[2]?.value || 'Informativo'
+      const date = fields[3]?.value || today
+      const message = fields[4]?.value?.trim()
+      const fixed = Boolean(fields[5]?.checked)
+      const whatsapp = Boolean(fields[6]?.checked)
+      if (!title || !message) {
+        window.alert('Informe o título e a mensagem do aviso.')
+        return
+      }
+      publishButton.disabled = true
+      publishButton.textContent = 'Publicando...'
+      const { data, error: requestError } = await supabase.rpc('publicar_aviso_admin', { p_titulo: title, p_conteudo: message, p_data_publicacao: date, p_tipo: type, p_destinatarios: recipients, p_fixar: fixed, p_enviar_whatsapp: whatsapp })
+      publishButton.disabled = false
+      publishButton.textContent = '+ Publicar aviso'
+      if (requestError) {
+        window.alert(requestError.message || 'Não foi possível publicar o aviso.')
+        return
+      }
+      if (fields[0]) fields[0].value = ''
+      if (fields[4]) fields[4].value = ''
+      const totalRecipients = Number(data?.destinatarios || 0)
+      window.alert(totalRecipients ? `Aviso publicado para ${totalRecipients} aluno(s).` : 'Aviso salvo, mas nenhum aluno possui uma conta vinculada para receber a notificação.')
+    }
+    publishButton.addEventListener('click', publish)
+    return () => publishButton.removeEventListener('click', publish)
+  }, [cursor.getFullYear(), cursor.getMonth(), today])
+  const cells = Array.from({ length: 42 }, (_, index) => {
+    const firstDay = (monthStart.getDay() + 6) % 7
+    const date = new Date(monthStart)
+    date.setDate(index - firstDay + 1)
+    return date
+  })
+  const selectedEvents = events.filter((event) => event.data === selectedDate)
+  const eventFor = (date) => events.filter((event) => event.data === isoDate(date))
+  const shiftMonth = (amount) => { const next = new Date(cursor); next.setMonth(next.getMonth() + amount); setCursor(next); setSelectedDate(isoDate(new Date(next.getFullYear(), next.getMonth(), 1, 12))) }
+  return <section className="admin-agenda-view" aria-busy={loading}>
+    <header className="admin-agenda-view__heading"><div><h2>Agenda Administrativa</h2><p>Organize aulas, compromissos e avisos do Studio.</p></div><div className="admin-agenda-view__actions"><button type="button" aria-label="Pesquisar" onClick={() => openView('busca')}><Icon name="search" /></button><button type="button" aria-label="Notificações" onClick={() => openView('notificacoes')}><Icon name="bell" /></button></div></header>
+    <div className="admin-agenda-toolbar"><div className="admin-agenda-month"><button type="button" aria-label="Mês anterior" onClick={() => shiftMonth(-1)}>‹</button><strong>{monthTitle.charAt(0).toUpperCase() + monthTitle.slice(1)}</strong><button type="button" aria-label="Próximo mês" onClick={() => shiftMonth(1)}>›</button></div><div className="admin-agenda-filters"><button type="button" onClick={() => { setCursor(new Date(today + 'T12:00:00')); setSelectedDate(today) }}>Hoje</button><button type="button">Ver mês</button><button type="button">Aulas</button><button type="button">Ensaios</button><button type="button">Espetáculos</button><button type="button">Avisos</button><button type="button" onClick={() => { setEvents([]); setSelectedDate(today) }}>Limpar filtros</button></div></div>
+    <div className="admin-agenda-layout"><section className="admin-agenda-calendar"><div className="admin-agenda-weekdays">{['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day, index) => <span key={day + index}>{day}</span>)}</div><div className="admin-agenda-grid">{cells.map((date) => { const dateKey = isoDate(date); const dayEvents = eventFor(date); const outside = date.getMonth() !== cursor.getMonth(); return <button key={dateKey} type="button" className={'admin-agenda-day' + (outside ? ' is-outside' : '') + (dateKey === selectedDate ? ' is-selected' : '')} onClick={() => setSelectedDate(dateKey)}><time>{date.getDate()}</time>{dayEvents.slice(0, 2).map((event, index) => <span key={event.id || index} className={'admin-agenda-dot admin-agenda-dot--' + (index % 3)} title={event.nome}>{event.nome}</span>)}</button> })}</div></section><aside className="admin-agenda-side"><section className="admin-agenda-day-panel"><h3>Agenda do dia</h3><strong>{dateLabel(selectedDate, { day: '2-digit', month: 'long' })}</strong>{selectedEvents.length ? selectedEvents.map((event, index) => <p key={event.id || index}><i className={'admin-agenda-dot admin-agenda-dot--' + (index % 3)} />{event.inicio?.slice(0, 5) || '—'} — {event.nome || 'Compromisso'}<small>{event.modalidade || event.professora || 'Studio'}</small></p>) : <p className="admin-agenda-empty">Nenhum compromisso neste dia.</p>}</section><section className="admin-agenda-commitment"><h3>Novo compromisso</h3><p>Adicione um compromisso à agenda administrativa.</p><button type="button" onClick={() => openView('agenda')}>+ Adicionar à agenda</button></section></aside></div>
+    <div className="admin-agenda-bottom"><img className="admin-agenda-notice-art" src={centralAvisoImage} alt="Central de avisos: crie um aviso para comunicar alunos, professores ou responsáveis." /><section className="admin-agenda-notice"><label className="admin-agenda-notice__title">Título do aviso<input placeholder="Ex: Alteração no horário da aula." /></label><label>Destinatários<select><option>Selecionar destinatários</option><option>Todos os alunos</option><option>Professores</option><option>Responsáveis</option></select></label><label>Tipo de aviso<select><option>Informativo</option><option>Urgente</option></select></label><label>Data de publicação<input type="date" defaultValue="2026-09-23" /></label><label className="admin-agenda-notice__message">Mensagem<textarea placeholder="Digite aqui o conteúdo do aviso..." /></label><div className="admin-agenda-notice__options"><label><input type="checkbox" defaultChecked /> Fixar aviso</label><label><input type="checkbox" /> Enviar no WhatsApp</label></div><div><button type="button">Cancelar</button><button type="button">Publicar aviso</button></div></section></div>
+  </section>
+}
+
+function ClassModal({ turma, onClose, onSaved }) {
+  const [form, setForm] = useState({ nome: turma?.nome || '', modalidade: turma?.modalidade || '', professora: turma?.professora || '', dia: turma?.dia || 'segunda-feira', horario: String(turma?.horario || '').slice(0, 5), capacidade: turma?.capacidade || 20, status: turma?.status || 'ativo' })
+  const [modalities, setModalities] = useState(() => turma?.modalidade ? [turma.modalidade] : [])
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const setField = (field, value) => setForm((current) => ({ ...current, [field]: value }))
+  useEffect(() => {
+    let active = true
+    supabase.rpc('listar_turmas_admin').then(({ data, error: requestError }) => {
+      if (!active || requestError || !Array.isArray(data)) return
+      const values = [...new Set(data.map((item) => item.modalidade).filter(Boolean))]
+      setModalities((current) => [...new Set([...current, ...values])])
+    }).catch(() => {})
+    return () => { active = false }
+  }, [])
+  const submit = async (event) => {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+    const { error: requestError } = await supabase.rpc('salvar_turma_admin', { p_id_turma: turma?.id || null, p_nome: form.nome, p_modalidade: form.modalidade, p_professora: form.professora, p_dia_semana: form.dia, p_horario: form.horario || null, p_capacidade: Number(form.capacidade), p_status: form.status })
+    if (requestError) { setError(requestError.message || 'Não foi possível salvar a turma.'); setSaving(false); return }
+    onSaved()
+  }
+  return <div className="admin-class-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className="admin-class-modal" role="dialog" aria-modal="true" aria-labelledby="class-modal-title" onMouseDown={(event) => event.stopPropagation()}><button className="admin-class-modal__close" type="button" onClick={onClose} aria-label="Fechar"><Icon name="close" /></button><h2 id="class-modal-title">{turma ? 'Editar turma' : 'Cadastrar turma'}</h2><p>Preencha os dados da turma e salve para disponibilizá-la nas matrículas.</p><form onSubmit={submit}><div className="admin-class-form-grid"><Field label="Nome da turma" required value={form.nome} onChange={(value) => setField('nome', value)} className="wide" /><label className="admin-enrollment-modal__field"><span>Modalidade<b>*</b></span><select value={form.modalidade} onChange={(event) => setField('modalidade', event.target.value)} required><option value="">Selecione uma modalidade</option>{modalities.map((modality) => <option key={modality} value={modality}>{modality}</option>)}</select></label><Field label="Professora" required value={form.professora} onChange={(value) => setField('professora', value)} /><label className="admin-enrollment-modal__field"><span>Dia da semana<b>*</b></span><select value={form.dia} onChange={(event) => setField('dia', event.target.value)}>{['segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'].map((day) => <option key={day}>{day}</option>)}</select></label><Field label="Horário" type="time" required value={form.horario} onChange={(value) => setField('horario', value)} /><Field label="Capacidade" type="number" required value={form.capacidade} onChange={(value) => setField('capacidade', value)} /><label className="admin-enrollment-modal__field"><span>Status</span><select value={form.status} onChange={(event) => setField('status', event.target.value)}><option value="ativo">Ativa</option><option value="inativo">Inativa</option></select></label></div>{error && <p className="admin-class-modal__error" role="alert">{error}</p>}<footer><button type="button" onClick={onClose}>Cancelar</button><button className="is-primary" type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar turma'}</button></footer></form></section></div>
+}
+
+function FinanceiroView({ data, list, setList, records, loading, error, refresh, openView }) {
+  const [financeSummary, setFinanceSummary] = useState(null)
+  const [activeChartIndex, setActiveChartIndex] = useState(null)
+  const [billingRows, setBillingRows] = useState([])
+  const [billingSavingId, setBillingSavingId] = useState(null)
+  useEffect(() => {
+    let active = true
+    const loadFinanceData = async () => {
+      const [{ data: summary, error: summaryError }, { data: kanban, error: kanbanError }] = await Promise.all([
+        supabase.rpc('admin_resumo_financeiro'),
+        supabase.rpc('admin_mensalidades_kanban'),
+      ])
+      if (!active) return
+      if (!summaryError && summary) setFinanceSummary(summary)
+      if (!kanbanError && Array.isArray(kanban)) setBillingRows(kanban)
+    }
+    loadFinanceData().catch(() => {})
+    const interval = window.setInterval(() => loadFinanceData().catch(() => {}), 30000)
+    const onVisibilityChange = () => { if (document.visibilityState === 'visible') loadFinanceData().catch(() => {}) }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => { active = false; window.clearInterval(interval); document.removeEventListener('visibilitychange', onVisibilityChange) }
+  }, [records?.pagina])
+  useEffect(() => {
+    if (!financeSummary) return
+    const growth = document.querySelector('.admin-finance-growth strong')
+    const target = document.querySelector('.admin-finance-target strong')
+    const revenueBadge = document.querySelector('.admin-finance-stats .is-revenue em')
+    const revenueCard = document.querySelector('.admin-finance-stats .is-revenue')
+    const paidCard = document.querySelector('.admin-finance-stats .is-paid')
+    const openCard = document.querySelector('.admin-finance-stats .is-open')
+    const overdueCard = document.querySelector('.admin-finance-stats .is-overdue')
+    if (growth) growth.textContent = `${Number(financeSummary.crescimento || 0) >= 0 ? '+' : ''}${Number(financeSummary.crescimento || 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
+    if (target) target.textContent = money(financeSummary.receita_mes)
+    if (revenueBadge) revenueBadge.textContent = `${Number(financeSummary.crescimento || 0) >= 0 ? '↑' : '↓'} ${Math.abs(Number(financeSummary.crescimento || 0)).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
+    if (revenueCard) {
+      const value = revenueCard.querySelector('strong')
+      const note = revenueCard.querySelector('span')
+      if (value) value.textContent = money(financeSummary.receita_mes)
+      if (note) note.textContent = `${Number(financeSummary.crescimento || 0) >= 0 ? '↑' : '↓'} ${Math.abs(Number(financeSummary.crescimento || 0)).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% em relação ao mês anterior`
+    }
+    if (paidCard) {
+      const value = paidCard.querySelector('strong')
+      const note = paidCard.querySelector('span')
+      if (value) value.textContent = money(financeSummary.recebido_mes)
+      if (note) note.textContent = financeSummary.receita_mes ? `${((Number(financeSummary.recebido_mes || 0) / Number(financeSummary.receita_mes)) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% da receita prevista` : 'Sem receita prevista'
+    }
+    if (openCard) {
+      const value = openCard.querySelector('strong')
+      const note = openCard.querySelector('span')
+      if (value) value.textContent = money(financeSummary.aberto)
+      if (note) note.textContent = `${financeSummary.status?.em_aberto || 0} mensalidades pendentes`
+    }
+    if (overdueCard) {
+      const badge = overdueCard.querySelector('b')
+      const value = overdueCard.querySelector('strong')
+      const note = overdueCard.querySelector('span')
+      if (badge) badge.textContent = String(financeSummary.status?.atrasado || 0)
+      if (value) value.textContent = money(financeSummary.atrasado)
+      if (note) note.textContent = `${financeSummary.status?.atrasado || 0} pagamentos em atraso`
+    }
+  }, [financeSummary])
+  const rows = billingRows.length ? billingRows : (records?.registros || [])
+  const today = new Date()
+  const billingBoardRows = rows.filter((row) => {
+    const status = String(row.status || '').toLowerCase()
+    const isPaid = /pago|paga|quitad/.test(status)
+    const dateValue = row.data || row.vencimento
+    const dueDate = dateValue ? new Date(`${String(dateValue).slice(0, 10)}T12:00:00`) : null
+    const isOverdue = !isPaid && dueDate instanceof Date && !Number.isNaN(dueDate.getTime()) && dueDate < new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    const isCurrentMonth = dueDate instanceof Date && !Number.isNaN(dueDate.getTime()) && dueDate.getFullYear() === today.getFullYear() && dueDate.getMonth() === today.getMonth()
+    return isCurrentMonth || isOverdue
+  })
+  const totalOpen = Number(financeSummary?.aberto ?? rows.reduce((sum, row) => sum + Number(row.saldo || row.valor || 0), 0))
+  const totalBilled = Number(financeSummary?.receita_mes ?? rows.reduce((sum, row) => sum + Number(row.valor || 0), 0))
+  const overdue = Number(financeSummary?.status?.atrasado ?? rows.filter((row) => /venc|atras|aberto/i.test(String(row.status || ''))).length)
+  const paid = Number(financeSummary?.status?.pago ?? 0)
+  const updateSearch = (event) => setList((current) => ({ ...current, busca: event.target.value, pagina: 0 }))
+  const summaryMonths = Array.isArray(financeSummary?.evolucao) ? financeSummary.evolucao : []
+  const monthLabels = summaryMonths.length ? summaryMonths.map((item) => new Intl.DateTimeFormat('pt-BR', { month: 'short' }).format(new Date(item.mes + 'T12:00:00')).replace('.', '')) : ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun']
+  const monthValues = summaryMonths.length ? summaryMonths.map((item) => Number(item.recebido || 0)) : []
+  const maxMonth = Math.max(...monthValues, 1)
+  const chartBase = Math.max(...summaryMonths.flatMap((item) => [Number(item.recebido || 0), Number(item.previsto || 0)]), 1)
+  const receivedLine = summaryMonths.length ? summaryMonths.map((item) => Math.max(8, (Number(item.recebido || 0) / chartBase) * 92)) : [38, 37, 54, 68, 82, 91]
+  const plannedLine = summaryMonths.length ? summaryMonths.map((item) => Math.max(8, (Number(item.previsto || 0) / chartBase) * 92)) : [42, 43, 61, 73, 88, 100]
+  const chartX = (index) => 24 + index * 49
+  const chartY = (value) => 118 - value
+  const chartItems = summaryMonths.length ? summaryMonths : monthLabels.map((month, index) => ({ mes: month, recebido: monthValues[index] || 0, previsto: 0 }))
+  const activeChartItem = activeChartIndex === null ? null : chartItems[activeChartIndex]
+  const activeChartDate = activeChartItem?.mes && /^\d{4}-\d{2}-\d{2}$/.test(String(activeChartItem.mes))
+    ? `${activeChartItem.mes}T12:00:00`
+    : activeChartItem?.mes && /^\d{4}-\d{2}$/.test(String(activeChartItem.mes))
+      ? `${activeChartItem.mes}-01T12:00:00`
+      : null
+  const activeChartMonth = activeChartDate
+    ? new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date(activeChartDate))
+    : activeChartItem?.mes || ''
+  const activeChartPosition = activeChartIndex === null ? undefined : {
+    left: `${(chartX(activeChartIndex) / 280) * 100}%`,
+    top: `${Math.max(8, (chartY(receivedLine[activeChartIndex]) / 150) * 100)}%`,
+  }
+  const [billingLaneById, setBillingLaneById] = useState({})
+  const [draggingBillingId, setDraggingBillingId] = useState(null)
+  const billingLaneFor = (row) => {
+    const id = row.id || row.chave
+    if (billingLaneById[id]) return billingLaneById[id]
+    const status = String(row.status || '').toLowerCase()
+    if (/pago|paga|quitad/.test(status)) return 'pago'
+    if (/atras|vencid/.test(status) || (row.data && new Date(row.data) < new Date())) return 'atrasado'
+    if (/aberto|pendente/.test(status)) return 'aberto'
+    return 'receber'
+  }
+  const billingColumns = [
+    ['receber', 'A receber', 'is-receivable'],
+    ['aberto', 'Em aberto', 'is-open'],
+    ['atrasado', 'Atrasado', 'is-overdue'],
+    ['pago', 'Pago', 'is-paid'],
+  ]
+  const moveBilling = async (id, lane) => {
+    const statusByLane = { receber: 'A Vencer', aberto: 'Em Aberto', atrasado: 'Atrasado', pago: 'Pago' }
+    const status = statusByLane[lane]
+    const previousLane = billingLaneFor(billingRows.find((row) => (row.id || row.chave) === id) || {})
+    setBillingLaneById((current) => ({ ...current, [id]: lane }))
+    setBillingSavingId(id)
+    const { error: requestError } = await supabase.rpc('admin_atualizar_status_mensalidade', { p_id_mensalidade: Number(id), p_status: status })
+    setBillingSavingId(null)
+    if (requestError) {
+      setBillingLaneById((current) => ({ ...current, [id]: previousLane }))
+      window.alert(requestError.message || 'Não foi possível atualizar o status da mensalidade.')
+      return
+    }
+    setBillingRows((current) => current.map((row) => (row.id || row.chave) === id ? { ...row, status } : row))
+    const [{ data: refreshedSummary }, { data: refreshedKanban }] = await Promise.all([
+      supabase.rpc('admin_resumo_financeiro'),
+      supabase.rpc('admin_mensalidades_kanban'),
+    ])
+    if (refreshedSummary) setFinanceSummary(refreshedSummary)
+    if (Array.isArray(refreshedKanban)) setBillingRows(refreshedKanban)
+  }
+  const receivedPoints = receivedLine.map((value, index) => `${chartX(index)},${chartY(value)}`).join(' ')
+  const plannedPoints = plannedLine.map((value, index) => `${chartX(index)},${chartY(value)}`).join(' ')
+  useEffect(() => {
+    const chart = document.querySelector('.admin-finance-line-chart')
+    if (!chart) return undefined
+    const points = [...chart.querySelectorAll('svg circle')]
+    const enter = (event) => setActiveChartIndex(points.indexOf(event.currentTarget))
+    const leave = () => setActiveChartIndex(null)
+    points.forEach((point) => {
+      point.addEventListener('mouseenter', enter)
+      point.addEventListener('focus', enter)
+      point.addEventListener('mouseleave', leave)
+      point.addEventListener('blur', leave)
+    })
+    return () => points.forEach((point) => {
+      point.removeEventListener('mouseenter', enter)
+      point.removeEventListener('focus', enter)
+      point.removeEventListener('mouseleave', leave)
+      point.removeEventListener('blur', leave)
+    })
+  }, [summaryMonths.length])
+  useEffect(() => {
+    const tooltip = document.querySelector('.admin-finance-chart-tooltip')
+    if (!tooltip) return
+    tooltip.classList.toggle('admin-finance-chart-tooltip--active', activeChartItem !== null)
+    if (!activeChartItem) return
+    const title = tooltip.querySelector('strong')
+    const spans = tooltip.querySelectorAll('span')
+    if (title) title.textContent = activeChartMonth
+    if (spans[0]) spans[0].textContent = `Recebido: ${money(activeChartItem.recebido)}`
+    if (spans[1]) spans[1].textContent = `Previsto: ${money(activeChartItem.previsto)}`
+    const chart = tooltip.closest('.admin-finance-line-chart')
+    const svg = chart?.querySelector('svg')
+    if (chart && svg && activeChartIndex !== null) {
+      const chartRect = chart.getBoundingClientRect()
+      const svgRect = svg.getBoundingClientRect()
+      tooltip.style.left = `${svgRect.left - chartRect.left + (chartX(activeChartIndex) / 280) * svgRect.width}px`
+      tooltip.style.top = `${svgRect.top - chartRect.top + (chartY(receivedLine[activeChartIndex]) / 150) * svgRect.height}px`
+    } else {
+      Object.assign(tooltip.style, activeChartPosition || {})
+    }
+  }, [activeChartItem, activeChartMonth, activeChartPosition])
+  const statusGroups = [
+    ['A vencer', Number(financeSummary?.status?.a_vencer ?? Math.max(0, rows.length - overdue)), 'is-green'],
+    ['Em aberto', Number(financeSummary?.status?.em_aberto ?? Math.max(0, overdue - Math.round(overdue * .35))), 'is-yellow'],
+    ['Atrasado', overdue, 'is-red'],
+    ['Pago', paid, 'is-blue'],
+  ]
+  return <section className="admin-finance-view" aria-busy={loading}>
+    <header className="admin-finance-heading"><div><h2>Gestão Geral</h2><p>Acompanhe o andamento financeiro, notificações e relatórios sobre o Studio.</p></div><div className="admin-finance-heading__actions"><button className="is-active" type="button">Financeiro</button><button type="button" onClick={() => openView('notificacoes')}>Notificações</button><button type="button" onClick={() => openView('relatorios')}>Relatórios</button><button type="button" aria-label="Pesquisar" onClick={() => document.querySelector('.admin-finance-table-actions input')?.focus()}><Icon name="search" /></button><button type="button" aria-label="Notificações" onClick={() => openView('notificacoes')}><Icon name="bell" /></button></div></header>
+    <div className="admin-finance-toolbar"><div><h3>Financeiro</h3><p>Visão geral das movimentações financeiras</p></div><span>Período atual</span><button type="button" onClick={() => setList((current) => ({ ...current, filtro: current.filtro === 'vencidas' ? '' : 'vencidas', pagina: 0 }))}>{list.filtro === 'vencidas' ? 'Todas as mensalidades' : 'Ver vencidas'}</button></div>
+    <div className="admin-finance-stats"><article className="is-revenue"><div className="admin-finance-stat-top"><span className="admin-finance-stat-icon"><Icon name="tab-evolution" /></span><em>↑ 4,4%</em></div><small>Receita do mês</small><strong>{money(totalBilled || totalOpen)}</strong><span>↑ 3,4% em relação ao mês anterior</span></article><article className="is-paid"><div className="admin-finance-stat-top"><span className="admin-finance-stat-icon"><Icon name="tab-documents" /></span></div><small>Recebido</small><strong>{money(Math.max(0, totalBilled - totalOpen))}</strong><span>88,6% da receita prevista</span></article><article className="is-open"><div className="admin-finance-stat-top"><span className="admin-finance-stat-icon"><Icon name="enroll-pending" /></span></div><small>Em aberto</small><strong>{money(totalOpen)}</strong><span>{rows.length} mensalidades pendentes</span></article><article className="is-overdue"><div className="admin-finance-stat-top"><span className="admin-finance-stat-icon"><Icon name="warning" /></span><b>5</b></div><small>Atrasado</small><strong>{money(totalOpen * .4)}</strong><span>{Math.max(0, overdue)} pagamentos em atraso</span></article></div>
+    <div className="admin-finance-main-grid"><section className="admin-finance-card admin-finance-chart"><header><div><h3>Evolução financeira</h3><p>Receita recebida nos últimos 6 meses</p></div><div className="admin-finance-chart-legend"><span><i className="is-received" />Recebido</span><span><i className="is-planned" />Previsto</span></div></header><div className="admin-finance-line-chart" aria-label="Evolução financeira por mês"><svg viewBox="0 0 280 150" role="img" aria-label="Linha de receita recebida e prevista"><g className="admin-finance-chart-grid"><line x1="24" y1="25" x2="270" y2="25" /><line x1="24" y1="55" x2="270" y2="55" /><line x1="24" y1="85" x2="270" y2="85" /><line x1="24" y1="115" x2="270" y2="115" /></g><text x="2" y="28">R$ 31k</text><text x="2" y="58">R$ 27k</text><text x="2" y="88">R$ 23k</text><polyline className="admin-finance-line admin-finance-line--planned" points={plannedPoints} /><polyline className="admin-finance-line admin-finance-line--received" points={receivedPoints} />{receivedLine.map((value, index) => <circle key={monthLabels[index]} cx={chartX(index)} cy={chartY(value)} r="3.2" />)}<g className="admin-finance-chart-months">{monthLabels.map((month, index) => <text key={month} x={chartX(index)} y="141">{month.toUpperCase()}</text>)}</g></svg><div className="admin-finance-chart-tooltip"><strong>JUNHO 2026</strong><span>Recebido: {money(totalBilled || 25450)}</span><span>Previsto: {money(Math.max(totalBilled || 30000, 30000))}</span></div><aside className="admin-finance-growth"><small>CRESCIMENTO</small><strong>+32,3%</strong><span>desde janeiro</span><i>Evolução<br />consistente</i></aside><div className="admin-finance-target"><small>Meta mês</small><strong>{money(totalBilled || 30000)}</strong></div></div></section><section className="admin-finance-card admin-finance-status"><header><h3>Status das mensalidades</h3><span>{rows.length} registros</span></header><div className="admin-finance-donut" style={{ '--finance-progress': `${Math.min(100, Math.max(8, rows.length ? (paid / Math.max(rows.length, paid)) * 100 : 8))}%` }}><strong>{rows.length || 0}</strong><span>mensalidades</span></div><ul>{statusGroups.map(([label, value, tone]) => <li key={label}><i className={tone} /><span>{label}</span><b>{value}</b></li>)}</ul></section></div>
+    <section className="admin-finance-table-card"><header><div><h3>Mensalidades</h3><p>Acompanhe os pagamentos e valores em aberto dos alunos.</p></div><div className="admin-finance-table-actions"><label><Icon name="search" /><input value={list.busca} onChange={updateSearch} placeholder="Pesquisar aluno" /></label><button type="button" onClick={() => setList((current) => ({ ...current, filtro: current.filtro ? '' : 'vencidas', pagina: 0 }))}>Filtros</button></div></header>{loading ? <StateMessage title="Carregando mensalidades..." loading /> : error ? <StateMessage title={error} action={refresh} /> : <div className="admin-finance-table-wrap"><table><thead><tr><th>Aluno</th><th>Competência</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Ação</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id || row.chave}><td><strong>{row.nome || 'Aluno'}</strong></td><td>{row.competencia || '—'}</td><td>{dateLabel(row.data)}</td><td>{money(row.saldo || row.valor)}</td><td><span className={'admin-finance-status-pill ' + (/venc|atras|aberto/i.test(String(row.status || '')) ? 'is-red' : 'is-green')}>{row.status || 'Em aberto'}</span></td><td><button type="button" onClick={() => openView('alunos', '', row.nome)}>Ver aluno</button></td></tr>)}</tbody></table>{!rows.length && <p className="admin-list-empty">Nenhuma mensalidade encontrada.</p>}</div>}<footer><span>{records?.total || 0} mensalidades encontradas</span><div><button type="button" disabled={!list.pagina} onClick={() => setList((current) => ({ ...current, pagina: current.pagina - 1 }))}>Anterior</button><button type="button" disabled={rows.length < 25} onClick={() => setList((current) => ({ ...current, pagina: current.pagina + 1 }))}>Próxima</button></div></footer></section>
+    <section className="admin-finance-management"><header><div><h3>Gestão de mensalidades</h3><p>Arraste os pagamentos para atualizar o status financeiro.</p></div><button type="button" onClick={() => refresh()}>+ Nova cobrança</button><button type="button" onClick={() => setList((current) => ({ ...current, filtro: current.filtro ? '' : 'vencidas', pagina: 0 }))}>Filtros</button><button type="button" onClick={() => document.querySelector('.admin-finance-table-actions input')?.focus()}>Buscar aluno</button></header><div className="admin-finance-management-grid admin-finance-kanban">{billingColumns.map(([lane, label, tone]) => { const laneRows = billingBoardRows.filter((row) => billingLaneFor(row) === lane); const laneTotal = laneRows.reduce((sum, row) => sum + Number(row.saldo || row.valor || 0), 0); return <article key={lane} className={'admin-finance-kanban-column ' + tone} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (draggingBillingId) moveBilling(draggingBillingId, lane); setDraggingBillingId(null) }}><div className="admin-finance-kanban-heading"><strong>{label}</strong><span>({String(laneRows.length).padStart(2, '0')} cobranças {money(laneTotal)})</span></div><div className="admin-finance-kanban-list">{laneRows.map((row) => { const id = row.id || row.chave; return <div key={id} className={'admin-finance-billing-card' + (draggingBillingId === id ? ' is-dragging' : '')} draggable onDragStart={() => setDraggingBillingId(id)} onDragEnd={() => setDraggingBillingId(null)}><div className="admin-finance-billing-avatar">{String(row.nome || 'Aluno').split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()}</div><div className="admin-finance-billing-info"><strong>{row.nome || 'Aluno'}</strong><span>{row.competencia || 'Mensalidade'}</span><b>Valor: {money(row.saldo || row.valor)}</b><small>{billingLaneFor(row) === 'pago' ? '✓ Pago em: ' : '▣ Venc: '}{dateLabel(row.data)}</small></div>{billingLaneFor(row) === 'pago' && <i className="admin-finance-billing-check">✓</i>}</div>})}{!laneRows.length && <p className="admin-finance-kanban-empty">Solte uma cobrança aqui</p>}</div></article>})}</div></section>
+  </section>
+}
+
+function ReportsView({ data, openView }) {
+  const [selectedReport, setSelectedReport] = useState(null)
+  const [generated, setGenerated] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [reportResult, setReportResult] = useState(null)
+  const [exportFormat, setExportFormat] = useState('')
+  const [form, setForm] = useState({ inicio: '2026-01-01', fim: '2026-09-30', modalidade: 'Todas as modalidades', turma: 'Todas as turmas', professor: 'Todos os professores' })
+  const reportCards = [
+    ['alunos', 'Relatório de alunos', 'Dados cadastrais, situação das matrículas e distribuição dos alunos.', 'users'],
+    ['frequencia', 'Relatório de frequência', 'Presenças, faltas e frequência dos alunos por período.', 'enroll-new'],
+    ['financeiro', 'Relatório financeiro', 'Mensalidades, pagamentos, valores em aberto e atrasados.', 'tab-attendance'],
+    ['modalidades', 'Relatório de modalidades', 'Turmas, alunos e ocupação de cada modalidade.', 'tab-class'],
+    ['loja', 'Relatório da loja', 'Pedidos, produtos vendidos, estoque e movimentações.', 'tab-purchases'],
+    ['espetaculos', 'Relatório de espetáculos', 'Participantes, apresentações e informações específicas.', 'star'],
+  ]
+  const updateField = (field, value) => setForm((current) => ({ ...current, [field]: value }))
+  const _openPrintableReport = (result, printWindow) => {
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>\"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', "'": '&#39;' })[character])
+    const rows = result?.registros || []
+    const headers = [...new Set(rows.flatMap((row) => Object.keys(row)))]
+    const tableHead = headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')
+    const tableBody = rows.map((row) => `<tr>${headers.map((header) => `<td>${escapeHtml(row[header])}</td>`).join('')}</tr>`).join('')
+    printWindow.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório ${escapeHtml(result?.tipo || '')}</title><style>body{font-family:Arial,sans-serif;color:#14253a;padding:32px}h1{font-size:22px;margin:0 0 6px}p{color:#667582;margin:0 0 22px}table{width:100%;border-collapse:collapse;font-size:11px}th{background:#14253a;color:#fff;text-align:left}th,td{padding:8px;border:1px solid #dce2e6}tr:nth-child(even){background:#f6f8f9}@media print{body{padding:0}}</style></head><body><h1>Relatório de ${escapeHtml(result?.tipo || 'dados')}</h1><p>Período: ${escapeHtml(result?.inicio)} até ${escapeHtml(result?.fim)} · ${escapeHtml(result?.total || 0)} registro(s)</p><table><thead><tr>${tableHead}</tr></thead><tbody>${tableBody || `<tr><td colspan="${Math.max(headers.length, 1)}">Nenhum registro encontrado.</td></tr>`}</tbody></table></body></html>`)
+    printWindow.document.close()
+    let printed = false
+    const print = () => {
+      if (printed || printWindow.closed) return
+      printed = true
+      printWindow.focus()
+      printWindow.print()
+      setTimeout(() => printWindow.close(), 300)
+    }
+    printWindow.onload = () => setTimeout(print, 100)
+    setTimeout(print, 500)
+  }
+  const generate = async (format = '') => {
+    if (!selectedReport) return
+    if (format) {
+      setExportFormat(format)
+      document.documentElement.dataset.reportFormat = format
+      return
+    }
+    if (!exportFormat) {
+      window.alert('Escolha Excel ou CSV antes de gerar o relatório.')
+      return
+    }
+    setGenerating(true)
+    const cleanFilter = (value) => value && !value.toLowerCase().startsWith('todas') && !value.toLowerCase().startsWith('todos') ? value : null
+    const { data: result, error: requestError } = await supabase.rpc('admin_gerar_relatorio', { p_tipo: selectedReport, p_inicio: form.inicio, p_fim: form.fim, p_modalidade: cleanFilter(form.modalidade), p_turma: cleanFilter(form.turma), p_professor: cleanFilter(form.professor) })
+    setGenerating(false)
+    if (requestError) { window.alert(requestError.message || 'Não foi possível gerar o relatório.'); return }
+    setReportResult(result)
+    setGenerated(true)
+    if (exportFormat) {
+      const reportRows = result?.registros || []
+      const headers = [...new Set(reportRows.flatMap((row) => Object.keys(row)))]
+      const csv = [headers.join(';'), ...reportRows.map((row) => headers.map((header) => JSON.stringify(row[header] ?? '')).join(';'))].join('\n')
+      const extension = exportFormat === 'excel' ? 'xls' : 'csv'
+      const blob = new Blob([`\uFEFF${csv}`], { type: exportFormat === 'excel' ? 'application/vnd.ms-excel' : 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${selectedReport}-${form.inicio}-${form.fim}.${extension}`
+      link.click()
+      URL.revokeObjectURL(url)
+    }
+  }
+  return <section className="admin-reports-view">
+    <header className="admin-finance-heading"><div><h2>Gestão Geral</h2><p>Acompanhe o andamento financeiro, notificações e relatórios específicos sobre o Studio.</p></div><div className="admin-finance-heading__actions"><button type="button" onClick={() => openView('financeiro')}>Financeiro</button><button type="button" onClick={() => openView('notificacoes')}>Notificações</button><button className="is-active" type="button">Relatórios</button><button type="button" aria-label="Pesquisar"><Icon name="search" /></button><button type="button" aria-label="Notificações" onClick={() => openView('notificacoes')}><Icon name="bell" /></button></div></header>
+    <div className="admin-reports-heading"><h3>Relatórios</h3><p>Escolha um relatório para gerar uma visão organizada dos dados do Studio.</p></div>
+    <div className="admin-report-cards">{reportCards.map(([id, title, description, icon]) => <button key={id} type="button" className={'admin-report-card' + (selectedReport === id ? ' is-selected' : '')} onClick={() => { setSelectedReport(id); setGenerated(false) }}><span><Icon name={icon} /></span><strong>{title}</strong><small>{description}</small><em>Gerar →</em></button>)}</div>
+    <button className="admin-reports-generate" type="button" onClick={() => selectedReport && generate()} disabled={!selectedReport}>Gerar relatório</button>
+    {generated && <p className="admin-report-success">Relatório preparado com {reportResult?.total || 0} registro(s) atuais do banco.</p>}
+    {selectedReport && <div className="admin-report-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setSelectedReport(null)}><section className="admin-report-modal" role="dialog" aria-modal="true" aria-labelledby="admin-report-title" onMouseDown={(event) => event.stopPropagation()}><button className="admin-report-modal__close" type="button" onClick={() => setSelectedReport(null)} aria-label="Fechar">×</button><label>Tipo de relatório<select value={selectedReport} onChange={(event) => setSelectedReport(event.target.value)}>{reportCards.map(([id, title]) => <option key={id} value={id}>{title}</option>)}</select></label><h3 id="admin-report-title">Período</h3><div className="admin-report-modal__row"><label>Data inicial<input type="date" value={form.inicio} onChange={(event) => updateField('inicio', event.target.value)} /></label><span>→</span><label>Data final<input type="date" value={form.fim} onChange={(event) => updateField('fim', event.target.value)} /></label></div><h3>Filtros</h3><div className="admin-report-modal__row admin-report-modal__filters"><label>Modalidade<select value={form.modalidade} onChange={(event) => updateField('modalidade', event.target.value)}><option>Todas as modalidades</option></select></label><label>Turma<select value={form.turma} onChange={(event) => updateField('turma', event.target.value)}><option>Todas as turmas</option>{(data?.turmas || []).map((turma) => <option key={turma.id}>{turma.nome}</option>)}</select></label><label>Professor<select value={form.professor} onChange={(event) => updateField('professor', event.target.value)}><option>Todos os professores</option></select></label></div><button className="admin-report-modal__generate" type="button" onClick={() => generate()} disabled={generating}>{generating ? 'Gerando...' : '▥ Gerar relatório'}</button><div className="admin-report-modal__exports"><span>Escolha o formato do arquivo após gerar o relatório.</span><button type="button" onClick={() => generate('pdf')} disabled={generating}>PDF</button><button type="button" onClick={() => generate('excel')} disabled={generating}>Excel</button><button type="button" onClick={() => generate('csv')} disabled={generating}>CSV</button></div></section></div>}
+  </section>
+}
+
+function NotificationsView({ data, records, loading, error, refresh, openView, onSelect }) {
+  const [filter, setFilter] = useState('todos')
+  const [notifications, setNotifications] = useState(records?.registros || [])
+  useEffect(() => {
+    let active = true
+    const loadNotifications = async () => {
+      const { data: result, error: requestError } = await supabase.rpc('admin_listar_notificacoes')
+      if (active && !requestError && Array.isArray(result)) setNotifications(result)
+    }
+    loadNotifications().catch(() => {})
+    const interval = window.setInterval(() => loadNotifications().catch(() => {}), 30000)
+    const onVisibilityChange = () => { if (document.visibilityState === 'visible') loadNotifications().catch(() => {}) }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => { active = false; window.clearInterval(interval); document.removeEventListener('visibilitychange', onVisibilityChange) }
+  }, [records])
+  const categoryFor = (record) => {
+    const text = `${record.nome || ''} ${record.conteudo || ''}`.toLowerCase()
+    if (/matr[ií]cul/.test(text)) return 'matriculas'
+    if (/finance|mensalidade|pagamento|atras/.test(text)) return 'financeiro'
+    if (/agenda|ensaio|aula|hor[aá]rio/.test(text)) return 'agenda'
+    return 'sistema'
+  }
+  const filtered = notifications.filter((record) => filter === 'todos' || (filter === 'nao_lidas' ? !record.lido : categoryFor(record) === filter))
+  const unread = notifications.filter((record) => !record.lido).length
+  const filters = [['todos', 'Todos'], ['nao_lidas', 'Não lidos'], ['matriculas', 'Matrículas'], ['financeiro', 'Financeiro'], ['agenda', 'Agenda'], ['sistema', 'Sistema']]
+  const iconFor = (record) => {
+    const category = categoryFor(record)
+    if (category === 'financeiro') return 'finance'
+    if (category === 'agenda') return 'calendar'
+    if (category === 'matriculas') return 'enroll-pending'
+    return 'bell'
+  }
+  return <section className="admin-notifications-view" aria-busy={loading}>
+    <header className="admin-finance-heading"><div><h2>Gestão Geral</h2><p>Acompanhe o andamento financeiro, notificações e relatórios sobre o Studio.</p></div><div className="admin-finance-heading__actions"><button type="button" onClick={() => openView('financeiro')}>Financeiro</button><button className="is-active" type="button">Notificações</button><button type="button" onClick={() => openView('relatorios')}>Relatórios</button><button type="button" aria-label="Pesquisar"><Icon name="search" /></button><button type="button" aria-label="Notificações"><Icon name="bell" /></button></div></header>
+    <div className="admin-notifications-toolbar"><div><h3>Central de Notificações</h3><p>Acompanhe os avisos e atualizações importantes do Studio.</p></div><span>{unread} pendentes</span></div>
+    <nav className="admin-notifications-filters" aria-label="Filtros de notificações">{filters.map(([value, label]) => <button key={value} type="button" className={filter === value ? 'is-active' : ''} onClick={() => setFilter(value)}>{label}</button>)}</nav>
+    {loading ? <StateMessage title="Carregando notificações..." loading /> : error ? <StateMessage title={error} action={refresh} /> : <><div className="admin-notifications-summary">Exibindo {filtered.length} notificações <span>·</span> {filter === 'todos' ? 'Todas' : filters.find(([value]) => value === filter)?.[1]} <button type="button" onClick={refresh}>Atualização ↻</button></div><div className="admin-notification-cards">{filtered.map((record) => <button key={record.id} type="button" className={'admin-notification-card' + (!record.lido ? ' is-unread' : '')} onClick={() => onSelect(record)}><span className="admin-notification-card__icon"><Icon name={iconFor(record)} /></span><span className="admin-notification-card__body"><strong>{record.nome || 'Aviso do Studio'}</strong><span>{record.conteudo || 'Nova atualização disponível.'}</span><time>{dateLabel(record.data)}{record.lido ? ' · lido' : ' · não lido'}</time></span><span className="admin-notification-card__action">Ver detalhes <Icon name="arrow" /></span>{!record.lido && <i className="admin-notification-card__dot" />}</button>)}{!filtered.length && <p className="admin-list-empty">Nenhuma notificação encontrada.</p>}</div></>}
+  </section>
+}
+
 function RecordsView({ view, list, setList, data, loading, error, refresh, openView, onSelect, turmas, classId, setClassId, range, now }) {
   const options = filterOptions(view)
   const pageCount = Math.ceil((data?.total || 0) / 25)
@@ -421,6 +1108,146 @@ function RecordsView({ view, list, setList, data, loading, error, refresh, openV
     </>}
   </section>
 }
+function AdminSettingsWorkspace({ data, openView }) {
+  const [tab, setTab] = useState('configuracoes')
+  const [users, setUsers] = useState([])
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [settingsLoading, setSettingsLoading] = useState(true)
+  const [settingsError, setSettingsError] = useState('')
+  const [productModal, setProductModal] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const defaultSettings = {
+    nome_studio: data?.usuario?.nome || 'Studio de Dança Keli Dalpian',
+    telefone: data?.usuario?.telefone || '',
+    email: data?.usuario?.email || '',
+    endereco: '',
+    notificacoes_automaticas: true,
+    lembretes_mensalidade: true,
+    avisos_aula: true,
+    idioma: 'Português (BR)',
+    fuso_horario: 'Brasília (BR)',
+    enviar_avisos_administrativos: true,
+    enviar_confirmacao_matriculas: true,
+  }
+  const [settingsForm, setSettingsForm] = useState(defaultSettings)
+
+  useEffect(() => {
+    let active = true
+    setSettingsLoading(true)
+    supabase.rpc('admin_obter_configuracoes').then(({ data: settings, error }) => {
+      if (!active) return
+      if (error) setSettingsError('Não foi possível carregar as configurações salvas.')
+      else if (settings) setSettingsForm((current) => ({ ...current, ...settings }))
+      setSettingsLoading(false)
+    })
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    if (!['usuarios', 'produtos'].includes(tab)) return undefined
+    setLoading(true)
+    const request = tab === 'usuarios'
+      ? supabase.rpc('admin_listar_usuarios_admin')
+      : supabase.from('produto').select('id_produto,nome,preco,estoque,status').limit(50)
+    request.then(({ data: rows }) => {
+      if (!active) return
+      if (tab === 'usuarios') setUsers(rows || [])
+      else setProducts(rows || [])
+      setLoading(false)
+    }).catch(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [tab])
+
+  const saveSettings = async (event) => {
+    event.preventDefault()
+    setSaved(false)
+    setSettingsError('')
+    const { data: savedSettings, error } = await supabase.rpc('admin_salvar_configuracoes', {
+      p_nome_studio: settingsForm.nome_studio,
+      p_telefone: settingsForm.telefone,
+      p_email: settingsForm.email,
+      p_endereco: settingsForm.endereco,
+      p_notificacoes_automaticas: settingsForm.notificacoes_automaticas,
+      p_lembretes_mensalidade: settingsForm.lembretes_mensalidade,
+      p_avisos_aula: settingsForm.avisos_aula,
+      p_idioma: settingsForm.idioma,
+      p_fuso_horario: settingsForm.fuso_horario,
+      p_enviar_avisos_administrativos: settingsForm.enviar_avisos_administrativos,
+      p_enviar_confirmacao_matriculas: settingsForm.enviar_confirmacao_matriculas,
+    })
+    if (error) {
+      setSettingsError(error.message || 'Não foi possível salvar as configurações.')
+      return
+    }
+    if (savedSettings) setSettingsForm((current) => ({ ...current, ...savedSettings }))
+    setSaved(true)
+  }
+
+  if (tab === 'configuracoes') return <AdminSettingsForm tab={tab} setTab={setTab} settingsForm={settingsForm} setSettingsForm={setSettingsForm} saveSettings={saveSettings} saved={saved} loading={settingsLoading} error={settingsError} reset={() => setSettingsForm(defaultSettings)} />
+  if (tab === 'usuarios') return <AdminUsersView tab={tab} setTab={setTab} users={users} loading={loading} />
+
+  return <section className="admin-settings-workspace">
+    <header className="admin-settings-heading"><div><h2>Gestão Geral</h2><p>Acompanhe as configurações, usuários e produtos do Studio.</p></div><div className="admin-settings-heading__actions"><button className={tab === 'configuracoes' ? 'is-active' : ''} type="button" onClick={() => setTab('configuracoes')}>Configurações</button><button className={tab === 'usuarios' ? 'is-active' : ''} type="button" onClick={() => setTab('usuarios')}>Usuários</button><button className={tab === 'produtos' ? 'is-active' : ''} type="button" onClick={() => setTab('produtos')}>Loja</button><button type="button" aria-label="Pesquisar"><Icon name="search" /></button><button type="button" aria-label="Notificações" onClick={() => openView('notificacoes')}><Icon name="bell" /></button></div></header>
+    <div className="admin-settings-tabs"><button className={tab === 'configuracoes' ? 'is-active' : ''} type="button" onClick={() => setTab('configuracoes')}>Todos</button><button className={tab === 'usuarios' ? 'is-active' : ''} type="button" onClick={() => setTab('usuarios')}>Usuários</button><button className={tab === 'produtos' ? 'is-active' : ''} type="button" onClick={() => setTab('produtos')}>Loja</button></div>
+    {tab === 'configuracoes' && <><div className="admin-settings-banner"><div><strong>Configurações do Sistema</strong><p>Ajuste preferências e controles importantes para o funcionamento do programa do Studio.</p></div><span><Icon name="settings" /></span></div><form className="admin-settings-form" onSubmit={saveSettings}><h3>Informações do Studio</h3><div className="admin-settings-fields"><label>Nome do Studio<input value={settingsForm.nome} onChange={(event) => setSettingsForm((current) => ({ ...current, nome: event.target.value }))} /></label><label>Telefone/WhatsApp<input value={settingsForm.telefone} onChange={(event) => setSettingsForm((current) => ({ ...current, telefone: event.target.value }))} /></label><label>E-mail<input value={settingsForm.email} onChange={(event) => setSettingsForm((current) => ({ ...current, email: event.target.value }))} /></label><label>Endereço<input placeholder="Rua, número e cidade" /></label></div><h3>Preferências do sistema</h3><div className="admin-settings-preferences"><label><span>Notificações automáticas</span><input type="checkbox" defaultChecked /></label><label><span>Lembretes de mensalidade</span><input type="checkbox" defaultChecked /></label><label><span>Aulas em dia</span><input type="checkbox" defaultChecked /></label></div><div className="admin-settings-actions"><button type="button" onClick={() => setSettingsForm({ nome: data?.usuario?.nome || '', telefone: data?.usuario?.telefone || '', email: data?.usuario?.email || '' })}>Cancelar</button><button type="submit">{saved ? 'Salvo' : 'Salvar alterações'}</button></div></form></>}
+    {tab === 'usuarios' && <section className="admin-settings-table"><header><div><h3>Usuários e permissões</h3><p>Gerencie o acesso das pessoas ao sistema.</p></div><button type="button">+ Novo usuário</button></header><div className="admin-settings-table__filters"><input placeholder="Buscar usuário" /><select><option>Todos os perfis</option><option>Administrador</option><option>Professor</option><option>Aluno</option></select></div>{loading ? <StateMessage title="Carregando usuários..." loading /> : <table><thead><tr><th>Usuário</th><th>Perfil</th><th>Acesso</th><th>Status</th><th>Ação</th></tr></thead><tbody>{users.map((user) => <tr key={user.id_usuario}><td><strong>{user.nome || 'Usuário'}</strong><small>{user.email || '—'}</small></td><td>Administrador</td><td>Completo</td><td><span className="admin-settings-status">{user.status || 'Ativo'}</span></td><td><button type="button">Editar</button></td></tr>)}</tbody></table>}</section>}
+    {tab === 'produtos' && <section className="admin-settings-table"><header><div><h3>Estoque e produtos</h3><p>Cadastre produtos e acompanhe as quantidades disponíveis e o valor da loja.</p></div><button type="button" onClick={() => setProductModal(true)}>+ Cadastrar novo produto</button></header><div className="admin-settings-kpis"><article><strong>{products.length}</strong><span>Produtos cadastrados</span></article><article><strong>{products.filter((product) => Number(product.estoque) <= 5).length}</strong><span>Estoque baixo</span></article><article><strong>{money(products.reduce((total, product) => total + Number(product.preco || 0), 0))}</strong><span>Valor dos produtos</span></article></div><div className="admin-settings-table__filters"><input placeholder="Pesquisar produto" /><select><option>Todas as categorias</option></select><select><option>Todos os status</option></select><button type="button">Filtrar</button></div>{loading ? <StateMessage title="Carregando produtos..." loading /> : <table><thead><tr><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Preço</th><th>Status</th><th>Ação</th></tr></thead><tbody>{products.map((product) => <tr key={product.id_produto}><td><strong>{product.nome}</strong></td><td>—</td><td>{product.estoque ?? 0}</td><td>{money(product.preco)}</td><td><span className="admin-settings-status">{product.status || 'Ativo'}</span></td><td><button type="button">Editar</button></td></tr>)}</tbody></table>}</section>}
+    {productModal && <div className="admin-settings-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setProductModal(false)}><form className="admin-settings-product-modal" onSubmit={(event) => { event.preventDefault(); setProductModal(false) }}><button className="admin-settings-modal__close" type="button" onClick={() => setProductModal(false)}>×</button><h3>Cadastrar Produto</h3><p>Preencha as informações do novo produto.</p><label>Nome do produto<input required placeholder="Ex.: Collant rosa" /></label><div><label>Categoria<select><option>Vestuário</option><option>Acessórios</option><option>Calçados</option></select></label><label>Preço<input type="number" step="0.01" placeholder="R$ 0,00" /></label></div><div><label>Estoque<input type="number" placeholder="0" /></label><label>Estoque mínimo<input type="number" placeholder="0" /></label></div><button className="admin-settings-product-modal__submit" type="submit">Cadastrar produto</button></form></div>}
+  </section>
+}
+
+function AdminSettingsForm({ tab, setTab, settingsForm, setSettingsForm, saveSettings, saved, loading, error, reset }) {
+  const update = (key, value) => setSettingsForm((current) => ({ ...current, [key]: value }))
+  return <section className="admin-settings-workspace">
+    <header className="admin-settings-heading"><div><h2>Configurações</h2></div><div className="admin-settings-heading__actions"><button type="button" aria-label="Pesquisar"><Icon name="search" /></button><button type="button" aria-label="Notificações"><Icon name="bell" /></button></div></header>
+    <div className="admin-settings-tabs"><button className={tab === 'configuracoes' ? 'is-active' : ''} type="button" onClick={() => setTab('configuracoes')}>Todos</button><button className={tab === 'usuarios' ? 'is-active' : ''} type="button" onClick={() => setTab('usuarios')}>Usuários</button><button className={tab === 'produtos' ? 'is-active' : ''} type="button" onClick={() => setTab('produtos')}>Loja</button></div>
+    <div className="admin-settings-banner"><div><strong>Configurações do Sistema</strong><p>Ajuste preferências e controles importantes para o funcionamento do programa do Studio.</p></div><span><Icon name="settings" /></span></div>
+    <form className="admin-settings-form" onSubmit={saveSettings}>
+      <h3>Informações do Studio</h3>
+      <div className="admin-settings-fields">
+        <label>Nome do Studio<input value={settingsForm.nome_studio} onChange={(event) => update('nome_studio', event.target.value)} disabled={loading} /></label>
+        <label>Telefone/WhatsApp<input value={settingsForm.telefone} onChange={(event) => update('telefone', event.target.value)} disabled={loading} /></label>
+        <label>E-mail<input type="email" value={settingsForm.email} onChange={(event) => update('email', event.target.value)} disabled={loading} /></label>
+        <label>Endereço<input value={settingsForm.endereco} onChange={(event) => update('endereco', event.target.value)} placeholder="Rua, número e cidade" disabled={loading} /></label>
+      </div>
+      <h3>Preferências do sistema</h3>
+      <div className="admin-settings-preferences">
+        <div className="admin-settings-preferences__switches">
+          <label><span>Notificações automáticas</span><input type="checkbox" checked={settingsForm.notificacoes_automaticas} onChange={(event) => update('notificacoes_automaticas', event.target.checked)} disabled={loading} /></label>
+          <label><span>Lembretes de mensalidade</span><input type="checkbox" checked={settingsForm.lembretes_mensalidade} onChange={(event) => update('lembretes_mensalidade', event.target.checked)} disabled={loading} /></label>
+          <label><span>Avisos de aula</span><input type="checkbox" checked={settingsForm.avisos_aula} onChange={(event) => update('avisos_aula', event.target.checked)} disabled={loading} /></label>
+        </div>
+        <div className="admin-settings-preferences__details">
+          <label>Idioma<select value={settingsForm.idioma} onChange={(event) => update('idioma', event.target.value)} disabled={loading}><option>Português (BR)</option><option>English (US)</option></select></label>
+          <label>Fuso horário<select value={settingsForm.fuso_horario} onChange={(event) => update('fuso_horario', event.target.value)} disabled={loading}><option>Brasília (BR)</option><option>São Paulo (BR)</option></select></label>
+          <fieldset><legend>Permissões de contato - e-mail</legend><label><input type="checkbox" checked={settingsForm.enviar_avisos_administrativos} onChange={(event) => update('enviar_avisos_administrativos', event.target.checked)} disabled={loading} /> Enviar avisos administrativos</label><label><input type="checkbox" checked={settingsForm.enviar_confirmacao_matriculas} onChange={(event) => update('enviar_confirmacao_matriculas', event.target.checked)} disabled={loading} /> Enviar confirmação de matrículas</label></fieldset>
+        </div>
+      </div>
+      {error && <p className="admin-settings-error" role="alert">{error}</p>}
+      <div className="admin-settings-actions"><button type="button" onClick={reset} disabled={loading}>Cancelar</button><button type="submit" disabled={loading}>{loading ? 'Carregando...' : saved ? 'Salvo' : 'Salvar alterações'}</button></div>
+    </form>
+  </section>
+}
+
+function AdminUsersView({ tab, setTab, users, loading }) {
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState('todos')
+  const visibleUsers = users.filter((user) => {
+    const matchesSearch = !search.trim() || `${user.nome || ''} ${user.email || ''}`.toLowerCase().includes(search.trim().toLowerCase())
+    const matchesFilter = filter === 'todos' || (filter === 'ativos' ? !/inativ|bloquead/i.test(user.status || '') : true)
+    return matchesSearch && matchesFilter
+  })
+  return <section className="admin-settings-workspace admin-users-workspace">
+    <header className="admin-settings-heading"><div><h2>Configurações</h2></div><div className="admin-settings-heading__actions"><button type="button" aria-label="Pesquisar"><Icon name="search" /></button><button type="button" aria-label="Notificações"><Icon name="bell" /></button></div></header>
+    <div className="admin-settings-tabs"><button className={tab === 'configuracoes' ? 'is-active' : ''} type="button" onClick={() => setTab('configuracoes')}>Todos</button><button className={tab === 'usuarios' ? 'is-active' : ''} type="button" onClick={() => setTab('usuarios')}>Usuários</button><button className={tab === 'produtos' ? 'is-active' : ''} type="button" onClick={() => setTab('produtos')}>Loja</button></div>
+    <div className="admin-users-banner"><div><strong>Usuários e permissões</strong><p>Gerencie os perfis que possuem acesso ao sistema e suas respectivas funcionalidades.</p></div><span className="admin-users-banner__people" aria-hidden="true" /></div>
+    <div className="admin-users-toolbar"><div className="admin-users-filters"><button className={filter === 'todos' ? 'is-active' : ''} type="button" onClick={() => setFilter('todos')}>Todos</button><button className={filter === 'ativos' ? 'is-active' : ''} type="button" onClick={() => setFilter('ativos')}>Ativos</button><button type="button">Administradores</button><button type="button">Secretaria</button><button type="button">Professoras</button></div><div className="admin-users-actions"><button type="button">☰ Filtros</button><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar usuário..." /><button type="button">+ Novo usuário</button></div></div>
+    {loading ? <StateMessage title="Carregando usuários..." loading /> : <div className="admin-users-table-wrap"><table className="admin-users-table"><thead><tr><th>Usuário</th><th>Perfil</th><th>Acesso</th><th>Último acesso</th><th>Status</th><th>Permissões</th><th>Ações</th></tr></thead><tbody>{visibleUsers.map((user, index) => <tr key={user.id_usuario}><td><span className="admin-users-person"><i>{(user.nome || 'U').slice(0, 1).toUpperCase()}</i><span><strong>{user.nome || 'Usuário'}</strong><small>{user.email || '—'}</small></span></span></td><td>{index === 0 ? 'Administradora' : 'Secretaria'}</td><td>{index === 0 ? 'Administrador' : 'Secretaria'}</td><td>02/10/2026<br /><small>08:42</small></td><td><em className={/inativ|bloquead/i.test(user.status || '') ? 'is-blocked' : 'is-active'}>{/inativ|bloquead/i.test(user.status || '') ? 'Bloqueado' : user.status || 'Ativo'}</em></td><td><button type="button">Ver permissões</button></td><td><button type="button">Editar</button><button type="button" aria-label="Mais ações">⋮</button></td></tr>)}</tbody></table>{!visibleUsers.length && <p className="admin-list-empty">Nenhum usuário encontrado.</p>}</div>}
+  </section>
+}
+
 function ProfileView({ data, settings, openView }) {
   return <section className="admin-records"><button className="admin-back" onClick={() => openView('dashboard')}>← Visão geral</button><h2>{settings ? 'Configurações da conta' : 'Meu perfil'}</h2><dl className="admin-profile-details">{[['nome', 'Nome'], ['email', 'E-mail'], ['telefone', 'Telefone'], ['perfil', 'Perfil de acesso']].map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{data?.[key] || '—'}</dd></div>)}</dl>{settings && <div className="admin-account-links"><button onClick={() => openView('professores')}>Professores</button><button onClick={() => openView('matriculas')}>Matrículas</button><button onClick={() => openView('produtos')}>Produtos</button><button onClick={() => openView('pedidos')}>Pedidos da loja</button></div>}</section>
 }

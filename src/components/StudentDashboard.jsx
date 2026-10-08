@@ -808,6 +808,7 @@ export default function StudentDashboard({ session, navigate }) {
   const [confirming, setConfirming] = useState(false)
   const [notice, setNotice] = useState('')
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [notifications, setNotifications] = useState([])
   const [activeView, setActiveView] = useState('home')
   const [evolutionAnimationKey, setEvolutionAnimationKey] = useState(0)
   const [viewTransition, setViewTransition] = useState(false)
@@ -871,6 +872,38 @@ export default function StudentDashboard({ session, navigate }) {
   // Updates state only after the Supabase request resolves for the current session.
   // oxlint-disable-next-line react/set-state-in-effect
   useEffect(() => { loadDashboard() }, [loadDashboard, session?.user?.id])
+
+  const loadNotifications = useCallback(async () => {
+    const { data, error: requestError } = await supabase.rpc('listar_comunicados_aluno')
+    if (!requestError && Array.isArray(data)) setNotifications(data)
+  }, [])
+
+  useEffect(() => { loadNotifications() }, [loadNotifications, session?.user?.id])
+
+  const markNotificationRead = useCallback(async (notification) => {
+    if (!notification?.id || notification.lido) return
+    await supabase.rpc('marcar_comunicado_aluno_lido', { p_comunicado: notification.id })
+    setNotifications((current) => current.map((item) => item.id === notification.id ? { ...item, lido: true } : item))
+  }, [])
+
+  useEffect(() => {
+    const panel = document.getElementById('student-notifications')
+    if (!panel || !notifications.length) return
+    panel.replaceChildren(...notifications.map((notification) => {
+      const button = document.createElement('button')
+      button.type = 'button'
+      button.className = `student-notification${notification.lido ? ' is-read' : ''}`
+      const title = document.createElement('strong')
+      title.textContent = notification.titulo || 'Aviso do Studio'
+      const content = document.createElement('span')
+      content.textContent = notification.conteudo || ''
+      const date = document.createElement('small')
+      date.textContent = notification.data ? new Intl.DateTimeFormat('pt-BR').format(new Date(notification.data)) : ''
+      button.append(title, content, date)
+      button.addEventListener('click', () => markNotificationRead(notification))
+      return button
+    }))
+  }, [markNotificationRead, notifications, notificationsOpen])
 
   const nextLesson = dashboard?.proxima_aula || defaultDashboard.proxima_aula
   const lessons = dashboard?.aulas || defaultDashboard.aulas
