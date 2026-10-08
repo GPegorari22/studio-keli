@@ -26,6 +26,7 @@ import balletClassicoImage from '../assets/ballet-classico.png'
 import jazzImage from '../assets/jazz.png'
 import sapateadoImage from '../assets/sapateado.png'
 import centralAvisoImage from '../assets/centralaviso.png'
+import storePointeShoes from '../assets/store-pointe-shoes.png'
 import { supabase } from '../lib/supabase.js'
 import './AdminDashboard.css'
 
@@ -606,8 +607,17 @@ function PeopleView({ data, list, setList, records, loading, error, refresh, ope
   const stats = data.indicadores || {}
   const pending = data.pendencias?.matriculas || 0
   const options = filterOptions('alunos')
+  const [changingStudentId, setChangingStudentId] = useState(null)
   const change = (field, value) => setList((current) => ({ ...current, [field]: value, pagina: 0 }))
   const students = records?.registros || []
+  const toggleStudentStatus = async (student) => {
+    const nextStatus = /inativ/i.test(student.status || '') ? 'ativo' : 'inativo'
+    setChangingStudentId(student.id)
+    const { error: requestError } = await supabase.rpc('admin_alterar_status_aluno', { p_id_aluno: Number(student.id), p_status: nextStatus })
+    setChangingStudentId(null)
+    if (requestError) { window.alert(requestError.message || 'Não foi possível alterar o status do aluno.'); return }
+    refresh()
+  }
   return <section className="admin-people" aria-busy={loading}>
     <header className="admin-people-heading">
       <div><h2>Gestão de Pessoas</h2><p>Gerencie alunos, professores e turmas do<br />Studio aqui.</p></div>
@@ -640,7 +650,7 @@ function PeopleView({ data, list, setList, records, loading, error, refresh, ope
           <td><button className="admin-people-student" type="button" onClick={() => onSelect({ ...student, _modulo: 'alunos' })}><Avatar name={student.nome} photo={student.foto} /><span><strong>{student.nome}</strong><small>{student.email || 'E-mail não informado'}<br />{student.telefone || 'Telefone não informado'}</small></span></button></td>
           <td>#{String(student.id).padStart(4, '0')}</td><td>{student.turma || '—'}</td><td>{student.modalidade || '—'}</td>
           <td><span className={'admin-people-status ' + (/pendente|aguardando/i.test(student.status || '') ? 'pending' : 'active')}>{student.status || 'Ativo'}</span></td>
-          <td><button className="admin-people-view" type="button" onClick={() => onSelect({ ...student, _modulo: 'alunos' })} aria-label={'Ver perfil de ' + student.nome}><span>◉</span> Ver perfil <b>⋮</b></button></td>
+          <td><button className="admin-people-view" type="button" onClick={() => onSelect({ ...student, _modulo: 'alunos' })} aria-label={'Ver perfil de ' + student.nome}><span>◉</span> Ver perfil</button><button className="admin-people-deactivate" type="button" onClick={() => toggleStudentStatus(student)} disabled={changingStudentId === student.id}>{changingStudentId === student.id ? '...' : /inativ/i.test(student.status || '') ? 'Ativar' : 'Desativar'}</button></td>
         </tr>)}
       </tbody></table>{!students.length && <p className="admin-list-empty">Nenhum aluno encontrado com estes filtros.</p>}
     </div>}
@@ -812,26 +822,26 @@ function FinanceiroView({ data, list, setList, records, loading, error, refresh,
     if (revenueBadge) revenueBadge.textContent = `${Number(financeSummary.crescimento || 0) >= 0 ? '↑' : '↓'} ${Math.abs(Number(financeSummary.crescimento || 0)).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
     if (revenueCard) {
       const value = revenueCard.querySelector('strong')
-      const note = revenueCard.querySelector('span')
+      const note = revenueCard.querySelector('span:not(.admin-finance-stat-icon)')
       if (value) value.textContent = money(financeSummary.receita_mes)
       if (note) note.textContent = `${Number(financeSummary.crescimento || 0) >= 0 ? '↑' : '↓'} ${Math.abs(Number(financeSummary.crescimento || 0)).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% em relação ao mês anterior`
     }
     if (paidCard) {
       const value = paidCard.querySelector('strong')
-      const note = paidCard.querySelector('span')
+      const note = paidCard.querySelector('span:not(.admin-finance-stat-icon)')
       if (value) value.textContent = money(financeSummary.recebido_mes)
       if (note) note.textContent = financeSummary.receita_mes ? `${((Number(financeSummary.recebido_mes || 0) / Number(financeSummary.receita_mes)) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% da receita prevista` : 'Sem receita prevista'
     }
     if (openCard) {
       const value = openCard.querySelector('strong')
-      const note = openCard.querySelector('span')
+      const note = openCard.querySelector('span:not(.admin-finance-stat-icon)')
       if (value) value.textContent = money(financeSummary.aberto)
       if (note) note.textContent = `${financeSummary.status?.em_aberto || 0} mensalidades pendentes`
     }
     if (overdueCard) {
       const badge = overdueCard.querySelector('b')
       const value = overdueCard.querySelector('strong')
-      const note = overdueCard.querySelector('span')
+      const note = overdueCard.querySelector('span:not(.admin-finance-stat-icon)')
       if (badge) badge.textContent = String(financeSummary.status?.atrasado || 0)
       if (value) value.textContent = money(financeSummary.atrasado)
       if (note) note.textContent = `${financeSummary.status?.atrasado || 0} pagamentos em atraso`
@@ -1150,7 +1160,7 @@ function AdminSettingsWorkspace({ data, openView }) {
     setLoading(true)
     const request = tab === 'usuarios'
       ? supabase.rpc('admin_listar_usuarios_admin')
-      : supabase.from('produto').select('id_produto,nome,preco,estoque,status').limit(50)
+      : supabase.from('produto').select('id_produto,nome,preco,estoque,status,id_categoria,tamanhos_disponiveis,categoria_produto(nome),imagem_produto(caminho,principal,ordem)').order('nome').limit(50)
     request.then(({ data: rows }) => {
       if (!active) return
       if (tab === 'usuarios') setUsers(rows || [])
@@ -1187,6 +1197,7 @@ function AdminSettingsWorkspace({ data, openView }) {
 
   if (tab === 'configuracoes') return <AdminSettingsForm tab={tab} setTab={setTab} settingsForm={settingsForm} setSettingsForm={setSettingsForm} saveSettings={saveSettings} saved={saved} loading={settingsLoading} error={settingsError} reset={() => setSettingsForm(defaultSettings)} />
   if (tab === 'usuarios') return <AdminUsersView tab={tab} setTab={setTab} users={users} loading={loading} />
+  if (tab === 'produtos') return <AdminProductsView tab={tab} setTab={setTab} products={products} setProducts={setProducts} loading={loading} />
 
   return <section className="admin-settings-workspace">
     <header className="admin-settings-heading"><div><h2>Gestão Geral</h2><p>Acompanhe as configurações, usuários e produtos do Studio.</p></div><div className="admin-settings-heading__actions"><button className={tab === 'configuracoes' ? 'is-active' : ''} type="button" onClick={() => setTab('configuracoes')}>Configurações</button><button className={tab === 'usuarios' ? 'is-active' : ''} type="button" onClick={() => setTab('usuarios')}>Usuários</button><button className={tab === 'produtos' ? 'is-active' : ''} type="button" onClick={() => setTab('produtos')}>Loja</button><button type="button" aria-label="Pesquisar"><Icon name="search" /></button><button type="button" aria-label="Notificações" onClick={() => openView('notificacoes')}><Icon name="bell" /></button></div></header>
@@ -1232,19 +1243,88 @@ function AdminSettingsForm({ tab, setTab, settingsForm, setSettingsForm, saveSet
 }
 
 function AdminUsersView({ tab, setTab, users, loading }) {
+  const [localUsers, setLocalUsers] = useState(users)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('todos')
-  const visibleUsers = users.filter((user) => {
+  const [modal, setModal] = useState(null)
+  const [form, setForm] = useState({ nome: '', email: '', senha: '', perfil: 'Administrador', status: 'ativo', permissoes: { financeiro: true, notificacoes: true, relatorios: true, usuarios: false, loja: true } })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [currentUserId, setCurrentUserId] = useState(null)
+  useEffect(() => setLocalUsers(users), [users])
+  useEffect(() => { supabase.auth.getUser().then(({ data: authData }) => setCurrentUserId(authData.user?.id || null)) }, [])
+  const visibleUsers = localUsers.filter((user) => {
     const matchesSearch = !search.trim() || `${user.nome || ''} ${user.email || ''}`.toLowerCase().includes(search.trim().toLowerCase())
     const matchesFilter = filter === 'todos' || (filter === 'ativos' ? !/inativ|bloquead/i.test(user.status || '') : true)
     return matchesSearch && matchesFilter
   })
+  const openCreate = () => { setError(''); setForm({ nome: '', email: '', senha: '', perfil: 'Administrador', status: 'ativo', permissoes: { financeiro: true, notificacoes: true, relatorios: true, usuarios: false, loja: true } }); setModal('create') }
+  const openEdit = (user) => { setError(''); setForm({ id_usuario: user.id_usuario, nome: user.nome || '', email: user.email || '', senha: '', perfil: user.perfil || 'Administrador', status: /bloquead|inativ/i.test(user.status || '') ? 'bloqueado' : 'ativo', permissoes: { financeiro: true, notificacoes: true, relatorios: true, usuarios: false, loja: true, ...(user.permissoes || {}) } }); setModal('edit') }
+  const saveUser = async (event) => {
+    event.preventDefault(); setSaving(true); setError('')
+    const result = modal === 'create'
+      ? await supabase.rpc('admin_criar_usuario_admin', { p_nome: form.nome, p_email: form.email, p_senha: form.senha, p_permissoes: { ...form.permissoes, perfil: form.perfil } })
+      : await supabase.rpc('admin_atualizar_usuario_admin', { p_id_usuario: form.id_usuario, p_nome: form.nome, p_status: form.status, p_permissoes: form.permissoes })
+    if (result.error) { setError(result.error.message || 'Não foi possível salvar o usuário.'); setSaving(false); return }
+    const { data: refreshed } = await supabase.rpc('admin_listar_usuarios_admin')
+    setLocalUsers(refreshed || []); setModal(null); setSaving(false)
+  }
+  const toggleUserStatus = async (user) => {
+    if (user.id_usuario === currentUserId) return
+    const nextStatus = /bloquead|inativ/i.test(user.status || '') ? 'ativo' : 'bloqueado'
+    const { error: requestError } = await supabase.rpc('admin_atualizar_usuario_admin', { p_id_usuario: user.id_usuario, p_nome: user.nome, p_status: nextStatus, p_permissoes: user.permissoes || {} })
+    if (requestError) { window.alert(requestError.message || 'Não foi possível alterar o status do usuário.'); return }
+    setLocalUsers((current) => current.map((item) => item.id_usuario === user.id_usuario ? { ...item, status: nextStatus } : item))
+  }
   return <section className="admin-settings-workspace admin-users-workspace">
     <header className="admin-settings-heading"><div><h2>Configurações</h2></div><div className="admin-settings-heading__actions"><button type="button" aria-label="Pesquisar"><Icon name="search" /></button><button type="button" aria-label="Notificações"><Icon name="bell" /></button></div></header>
     <div className="admin-settings-tabs"><button className={tab === 'configuracoes' ? 'is-active' : ''} type="button" onClick={() => setTab('configuracoes')}>Todos</button><button className={tab === 'usuarios' ? 'is-active' : ''} type="button" onClick={() => setTab('usuarios')}>Usuários</button><button className={tab === 'produtos' ? 'is-active' : ''} type="button" onClick={() => setTab('produtos')}>Loja</button></div>
     <div className="admin-users-banner"><div><strong>Usuários e permissões</strong><p>Gerencie os perfis que possuem acesso ao sistema e suas respectivas funcionalidades.</p></div><span className="admin-users-banner__people" aria-hidden="true" /></div>
-    <div className="admin-users-toolbar"><div className="admin-users-filters"><button className={filter === 'todos' ? 'is-active' : ''} type="button" onClick={() => setFilter('todos')}>Todos</button><button className={filter === 'ativos' ? 'is-active' : ''} type="button" onClick={() => setFilter('ativos')}>Ativos</button><button type="button">Administradores</button><button type="button">Secretaria</button><button type="button">Professoras</button></div><div className="admin-users-actions"><button type="button">☰ Filtros</button><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar usuário..." /><button type="button">+ Novo usuário</button></div></div>
-    {loading ? <StateMessage title="Carregando usuários..." loading /> : <div className="admin-users-table-wrap"><table className="admin-users-table"><thead><tr><th>Usuário</th><th>Perfil</th><th>Acesso</th><th>Último acesso</th><th>Status</th><th>Permissões</th><th>Ações</th></tr></thead><tbody>{visibleUsers.map((user, index) => <tr key={user.id_usuario}><td><span className="admin-users-person"><i>{(user.nome || 'U').slice(0, 1).toUpperCase()}</i><span><strong>{user.nome || 'Usuário'}</strong><small>{user.email || '—'}</small></span></span></td><td>{index === 0 ? 'Administradora' : 'Secretaria'}</td><td>{index === 0 ? 'Administrador' : 'Secretaria'}</td><td>02/10/2026<br /><small>08:42</small></td><td><em className={/inativ|bloquead/i.test(user.status || '') ? 'is-blocked' : 'is-active'}>{/inativ|bloquead/i.test(user.status || '') ? 'Bloqueado' : user.status || 'Ativo'}</em></td><td><button type="button">Ver permissões</button></td><td><button type="button">Editar</button><button type="button" aria-label="Mais ações">⋮</button></td></tr>)}</tbody></table>{!visibleUsers.length && <p className="admin-list-empty">Nenhum usuário encontrado.</p>}</div>}
+    <div className="admin-users-toolbar"><div className="admin-users-filters"><button className={filter === 'todos' ? 'is-active' : ''} type="button" onClick={() => setFilter('todos')}>Todos</button><button className={filter === 'ativos' ? 'is-active' : ''} type="button" onClick={() => setFilter('ativos')}>Ativos</button><button type="button">Administradores</button><button type="button">Secretaria</button><button type="button">Professoras</button></div><div className="admin-users-actions"><button type="button">☰ Filtros</button><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar usuário..." /><button type="button" onClick={openCreate}>+ Novo usuário</button></div></div>
+    {loading ? <StateMessage title="Carregando usuários..." loading /> : <div className="admin-users-table-wrap"><table className="admin-users-table"><thead><tr><th>Usuário</th><th>Perfil</th><th>Acesso</th><th>Último acesso</th><th>Status</th><th>Permissões</th><th>Ações</th></tr></thead><tbody>{visibleUsers.map((user) => { const isSelf = user.id_usuario === currentUserId; const isDisabled = /inativ|bloquead/i.test(user.status || ''); return <tr key={user.id_usuario}><td><span className="admin-users-person"><i>{(user.nome || 'U').slice(0, 1).toUpperCase()}</i><span><strong>{user.nome || 'Usuário'}</strong><small>{user.email || '—'}</small></span></span></td><td>{user.perfil || 'Administrador'}</td><td>{user.acesso || 'Administrador'}</td><td>{user.ultimo_acesso ? new Date(user.ultimo_acesso).toLocaleDateString('pt-BR') : '—'}</td><td><em className={isDisabled ? 'is-blocked' : 'is-active'}>{isDisabled ? 'Bloqueado' : user.status || 'Ativo'}</em></td><td><button type="button" onClick={() => openEdit(user)}>Ver permissões</button></td><td><button type="button" onClick={() => openEdit(user)}>Editar</button><button className="admin-users-status-action" type="button" onClick={() => toggleUserStatus(user)} disabled={isSelf} title={isSelf ? 'Você não pode desativar seu próprio usuário' : undefined}>{isDisabled ? 'Ativar' : 'Desativar'}</button><button type="button" onClick={() => openEdit(user)} aria-label="Mais ações">⋮</button></td></tr> })}</tbody></table>{!visibleUsers.length && <p className="admin-list-empty">Nenhum usuário encontrado.</p>}</div>}
+    {modal && <div className="admin-user-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setModal(null)}><form className="admin-user-modal" onSubmit={saveUser}><button type="button" className="admin-settings-modal__close" onClick={() => setModal(null)}>×</button><h3>{modal === 'create' ? 'Cadastrar usuário' : 'Editar usuário'}</h3><label>Nome<input required value={form.nome} onChange={(event) => setForm((current) => ({ ...current, nome: event.target.value }))} /></label><label>E-mail<input required type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} disabled={modal === 'edit'} /></label>{modal === 'create' && <><label>Tipo de usuário<select value={form.perfil} onChange={(event) => setForm((current) => ({ ...current, perfil: event.target.value }))}><option>Administrador</option><option>Secretaria</option><option>Professor</option><option>Aluno</option></select></label><label>Senha<input required minLength="6" type="password" value={form.senha} onChange={(event) => setForm((current) => ({ ...current, senha: event.target.value }))} /></label></>}{modal === 'edit' && <><label>Tipo de usuário<select value={form.perfil} disabled><option>{form.perfil}</option></select></label><label>Status<select value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}><option value="ativo">Ativo</option><option value="bloqueado">Bloqueado</option></select></label></>}<fieldset><legend>Permissões</legend>{[['financeiro', 'Financeiro'], ['notificacoes', 'Notificações'], ['relatorios', 'Relatórios'], ['usuarios', 'Usuários'], ['loja', 'Loja']].map(([key, label]) => <label key={key}><input type="checkbox" checked={form.permissoes[key]} onChange={(event) => setForm((current) => ({ ...current, permissoes: { ...current.permissoes, [key]: event.target.checked } }))} /> {label}</label>)}</fieldset>{error && <p className="admin-settings-error">{error}</p>}<button className="admin-user-modal__submit" type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar usuário'}</button></form></div>}
+  </section>
+}
+
+function AdminProductsView({ tab, setTab, products, setProducts, loading }) {
+  const [search, setSearch] = useState('')
+  const [modal, setModal] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [categories, setCategories] = useState([])
+  const [form, setForm] = useState({ id_produto: null, nome: '', descricao: '', preco: '', estoque: '', estoque_minimo: '', id_categoria: '', status: 'Ativo', tamanhos_disponiveis: 'Único', imagem: '' })
+  const filteredProducts = products.filter((product) => !search.trim() || String(product.nome || '').toLowerCase().includes(search.trim().toLowerCase()))
+  const totalValue = products.reduce((total, product) => total + Number(product.preco || 0), 0)
+  const imageFor = (product) => product.imagem_produto?.slice().sort((first, second) => Number(second.principal) - Number(first.principal) || Number(first.ordem || 0) - Number(second.ordem || 0))[0]?.caminho || storePointeShoes
+  const productQuery = 'id_produto,nome,descricao,preco,estoque,estoque_minimo,status,id_categoria,tamanhos_disponiveis,categoria_produto(nome),imagem_produto(caminho,principal,ordem)'
+  const reloadProducts = async () => { const { data, error: requestError } = await supabase.from('produto').select(productQuery).order('nome').limit(50); if (!requestError) setProducts(data || []); return requestError }
+  const openCreate = () => { setError(''); setForm({ id_produto: null, nome: '', descricao: '', preco: '', estoque: '', estoque_minimo: '', id_categoria: categories[0]?.id_categoria || '', status: 'Ativo', tamanhos_disponiveis: 'Único', imagem: '' }); setModal('create') }
+  const openEdit = (product) => { setError(''); setForm({ id_produto: product.id_produto, nome: product.nome || '', descricao: product.descricao || '', preco: product.preco ?? '', estoque: product.estoque ?? '', estoque_minimo: product.estoque_minimo ?? '', id_categoria: product.id_categoria || '', status: product.status || 'Ativo', tamanhos_disponiveis: Array.isArray(product.tamanhos_disponiveis) ? product.tamanhos_disponiveis.join(', ') : product.tamanhos_disponiveis || 'Único', imagem: product.imagem_produto?.slice().sort((first, second) => Number(second.principal) - Number(first.principal) || Number(first.ordem || 0) - Number(second.ordem || 0))[0]?.caminho || '' }); setModal('edit') }
+  const chooseImage = (event) => { const file = event.target.files?.[0]; if (!file) return; if (!file.type.startsWith('image/')) { setError('Selecione um arquivo de imagem válido.'); return } if (file.size > 5 * 1024 * 1024) { setError('A imagem deve ter no máximo 5 MB.'); return } const reader = new FileReader(); reader.onload = () => setForm((current) => ({ ...current, imagem: String(reader.result || '') })); reader.readAsDataURL(file) }
+  const saveProduct = async (event) => { event.preventDefault(); setSaving(true); setError(''); const payload = { nome: form.nome.trim(), descricao: form.descricao.trim() || null, preco: Number(form.preco || 0), estoque: Number(form.estoque || 0), estoque_minimo: Number(form.estoque_minimo || 0), id_categoria: form.id_categoria ? Number(form.id_categoria) : null, status: form.status, tamanhos_disponiveis: form.tamanhos_disponiveis.split(',').map((item) => item.trim()).filter(Boolean) || ['Único'] }; let productId = form.id_produto; let requestError; if (modal === 'create') { const result = await supabase.from('produto').insert(payload).select('id_produto').single(); productId = result.data?.id_produto; requestError = result.error } else { requestError = (await supabase.from('produto').update(payload).eq('id_produto', form.id_produto)).error } if (requestError || !productId) { setError(requestError?.message || 'Não foi possível salvar o produto.'); setSaving(false); return } if (form.imagem) { await supabase.from('imagem_produto').delete().eq('id_produto', productId).eq('principal', true); const imageResult = await supabase.from('imagem_produto').insert({ id_produto: productId, caminho: form.imagem, principal: true, ordem: 0 }); if (imageResult.error) { setError(imageResult.error.message || 'Produto salvo, mas não foi possível salvar a imagem.'); setSaving(false); return } } await reloadProducts(); setModal(null); setSaving(false) }
+  const deleteProduct = async (product) => { if (!window.confirm(`Apagar o produto "${product.nome}"?`)) return; const { error: requestError } = await supabase.from('produto').delete().eq('id_produto', product.id_produto); if (requestError) { window.alert(requestError.message || 'Não foi possível apagar o produto.'); return } await reloadProducts() }
+  useEffect(() => { supabase.from('categoria_produto').select('id_categoria,nome').order('nome').then(({ data }) => setCategories(data || [])) }, [])
+  useEffect(() => {
+    const cards = [...document.querySelectorAll('.admin-products-order-card')]
+    const columns = [...document.querySelectorAll('.admin-products-order-columns article')]
+    const handleDragStart = (event) => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', 'pedido'); event.currentTarget.classList.add('is-dragging') }
+    const handleDragEnd = (event) => event.currentTarget.classList.remove('is-dragging')
+    const handleDragOver = (event) => event.preventDefault()
+    const handleDrop = (event) => { event.preventDefault(); const card = document.querySelector('.admin-products-order-card.is-dragging'); if (card) event.currentTarget.appendChild(card) }
+    cards.forEach((card) => { card.draggable = true; card.addEventListener('dragstart', handleDragStart); card.addEventListener('dragend', handleDragEnd) })
+    columns.forEach((column) => { column.addEventListener('dragover', handleDragOver); column.addEventListener('drop', handleDrop) })
+    return () => { cards.forEach((card) => { card.removeEventListener('dragstart', handleDragStart); card.removeEventListener('dragend', handleDragEnd) }); columns.forEach((column) => { column.removeEventListener('dragover', handleDragOver); column.removeEventListener('drop', handleDrop) }) }
+  }, [products.length])
+  return <section className="admin-settings-workspace admin-products-workspace">
+    <header className="admin-settings-heading"><div><h2>Configurações</h2></div><div className="admin-settings-heading__actions"><button type="button" aria-label="Pesquisar"><Icon name="search" /></button><button type="button" aria-label="Notificações"><Icon name="bell" /></button></div></header>
+    <div className="admin-settings-tabs"><button className={tab === 'configuracoes' ? 'is-active' : ''} type="button" onClick={() => setTab('configuracoes')}>Todos</button><button className={tab === 'usuarios' ? 'is-active' : ''} type="button" onClick={() => setTab('usuarios')}>Usuários</button><button className={tab === 'produtos' ? 'is-active' : ''} type="button" onClick={() => setTab('produtos')}>Loja</button></div>
+    <div className="admin-products-banner" aria-label="Estoque e produtos" />
+    <div className="admin-products-kpis"><article><strong>{products.length}</strong><span>Produtos cadastrados</span></article><article><strong>{products.filter((product) => Number(product.estoque) <= 5).length}</strong><span>Estoque baixo</span></article><article><strong>{money(totalValue)}</strong><span>Valor em estoque</span></article></div>
+    <div className="admin-products-toolbar"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar produto..." /><select><option>Categoria</option><option>Vestuário</option><option>Calçados</option></select><select><option>Tamanho</option></select><select><option>Status</option></select><select><option>Estoque</option></select><button type="button">Ordenar⌄</button></div>
+    {loading ? <StateMessage title="Carregando produtos..." loading /> : <table className="admin-products-table"><thead><tr><th>Produto</th><th>Categoria</th><th>Tamanho</th><th>Estoque</th><th>Preço</th><th>Status</th><th>Ações</th></tr></thead><tbody>{filteredProducts.map((product) => { const category = Array.isArray(product.categoria_produto) ? product.categoria_produto[0]?.nome : product.categoria_produto?.nome; const sizes = Array.isArray(product.tamanhos_disponiveis) ? product.tamanhos_disponiveis.join(', ') : product.tamanhos_disponiveis || 'Único'; const available = Number(product.estoque || 0) > 0 && !/inativ|indispon/i.test(product.status || ''); return <tr key={product.id_produto}><td><span className="admin-products-product"><img src={imageFor(product)} alt="" /><strong>{product.nome || 'Produto'}</strong></span></td><td>{category || '—'}</td><td>{sizes}</td><td>{product.estoque ?? 0}</td><td>{money(product.preco)}</td><td><em className={available ? 'is-available' : 'is-unavailable'}>● {available ? 'Disponível' : 'Indisponível'}</em></td><td><div className="admin-products-actions"><button type="button" onClick={() => openEdit(product)}>Editar</button><button type="button" onClick={() => deleteProduct(product)}>Apagar</button></div></td></tr> })}</tbody></table>}
+    <button className="admin-products-new" type="button" onClick={openCreate}>CADASTRAR NOVO PRODUTO +</button>
+    <section className="admin-products-orders"><h3>Pedidos da Loja</h3><div className="admin-products-order-columns">{['Novos pedidos', 'Em preparação', 'Pronto para retirada', 'Entregues'].map((title, index) => <article key={title}><header><strong>{title}</strong><span>{index + 1}</span></header><div className="admin-products-order-card"><b>{index === 0 ? '#2026-014' : '#2026-011'}</b><span>{index === 0 ? 'Pedido recebido' : 'Pedido em acompanhamento'}</span><small>Hoje, 14:30</small><em>{index === 3 ? 'Concluído' : 'Ver pedido'}</em></div><div className="admin-products-order-card"><b>Pedido #{String(index + 8).padStart(3, '0')}</b><span>Produtos do Studio</span><small>08/10/2026</small></div></article>)}</div></section>
+    {modal && <div className="admin-settings-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setModal(null)}><form className="admin-settings-product-modal" onSubmit={saveProduct}><button className="admin-settings-modal__close" type="button" onClick={() => setModal(null)}>×</button><h3>{modal === 'create' ? 'Cadastrar produto' : 'Editar produto'}</h3><p>Atualize os dados que serão exibidos na loja.</p><label>Nome do produto<input required value={form.nome} onChange={(event) => setForm((current) => ({ ...current, nome: event.target.value }))} /></label><label>Descrição<input value={form.descricao} onChange={(event) => setForm((current) => ({ ...current, descricao: event.target.value }))} /></label><label>Imagem do produto<input type="file" accept="image/*" onChange={chooseImage} /><small className="admin-product-image-hint">PNG, JPG ou WEBP — máximo 5 MB</small>{form.imagem && <img className="admin-product-image-preview" src={form.imagem} alt="Prévia do produto" />}</label><div><label>Categoria<select value={form.id_categoria} onChange={(event) => setForm((current) => ({ ...current, id_categoria: event.target.value }))}><option value="">Sem categoria</option>{categories.map((category) => <option value={category.id_categoria} key={category.id_categoria}>{category.nome}</option>)}</select></label><label>Status<select value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}><option>Ativo</option><option>Inativo</option></select></label></div><div><label>Preço<input required min="0" step="0.01" type="number" value={form.preco} onChange={(event) => setForm((current) => ({ ...current, preco: event.target.value }))} /></label><label>Estoque<input required min="0" type="number" value={form.estoque} onChange={(event) => setForm((current) => ({ ...current, estoque: event.target.value }))} /></label></div><div><label>Estoque mínimo<input min="0" type="number" value={form.estoque_minimo} onChange={(event) => setForm((current) => ({ ...current, estoque_minimo: event.target.value }))} /></label><label>Tamanhos<input value={form.tamanhos_disponiveis} onChange={(event) => setForm((current) => ({ ...current, tamanhos_disponiveis: event.target.value }))} placeholder="P, M, G" /></label></div>{error && <p className="admin-settings-error">{error}</p>}<button className="admin-settings-product-modal__submit" type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar produto'}</button></form></div>}
   </section>
 }
 

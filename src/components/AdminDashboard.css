@@ -1481,7 +1481,7 @@ html[data-report-format="csv"] .admin-report-modal__exports button:nth-of-type(3
 .admin-settings-tabs { display: flex; gap: 7px; padding-bottom: 8px; border-bottom: 1px solid #e2e6e8; }
 .admin-settings-tabs button { padding: 5px 12px; border: 1px solid #d9dfe2; border-radius: 99px; color: #667582; background: #fff; font-size: 9px; cursor: pointer; }
 .admin-settings-tabs button.is-active { color: #fff; border-color: #14253a; background: #14253a; }
-.admin-settings-banner { display: block; width: 100%; height: clamp(150px, 14vw, 224px); min-height: 0; padding: 0; overflow: hidden; border-radius: 8px; background: url('../assets/conf-banner.png') 0 0 / 100% 100% no-repeat; }
+.admin-settings-banner { display: block; width: 100%; height: auto; aspect-ratio: 1704 / 389; min-height: 0; padding: 0; overflow: hidden; border-radius: 8px; background: url('../assets/config-banner.png') center / 100% 100% no-repeat; }
 .admin-settings-banner > div, .admin-settings-banner > span { display: none !important; }
 .admin-settings-banner strong { display: block; max-width: 270px; font: italic 600 22px Georgia, serif; }
 .admin-settings-banner p { max-width: 260px; margin: 7px 0 0; font-size: 10px; line-height: 1.3; }
@@ -1556,12 +1556,14 @@ html[data-report-format="csv"] .admin-report-modal__exports button:nth-of-type(3
 .admin-settings-tabs { gap: 14px; padding-bottom: 13px; border-bottom: 0; }
 .admin-settings-tabs button { min-width: 92px; height: 26px; padding: 0 16px; color: #14253a; border-color: #14253a; background: transparent; font-size: 10px; }
 .admin-settings-tabs button.is-active { color: #fff; border-color: #df7884; background: #df7884; }
-.admin-users-banner { position: relative; display: flex; min-height: 118px; align-items: center; overflow: hidden; padding: 22px 20px; border-radius: 12px; color: #fff; background: #0d1c2f; }
+.admin-users-banner { position: relative; display: flex; width: 100%; height: auto; aspect-ratio: 1704 / 408; min-height: 0; align-items: center; overflow: hidden; padding: 22px 20px; box-sizing: border-box; border-radius: 12px; color: #fff; background: url('../assets/users-banner.png') center / 100% 100% no-repeat; }
 .admin-users-banner::after { position: absolute; right: 12%; bottom: -70px; width: 170px; height: 170px; border: 12px solid #fff; border-radius: 50%; content: ''; opacity: .95; }
 .admin-users-banner > div { position: relative; z-index: 1; max-width: 235px; }
 .admin-users-banner strong { display: block; font: italic 600 18px Georgia, serif; }
 .admin-users-banner p { margin: 9px 0 0; color: #f3f5f8; font-size: 10px; line-height: 1.35; }
 .admin-users-banner__people { position: absolute; z-index: 2; right: 18px; bottom: -18px; width: 160px; height: 150px; background: url('../assets/pessoas.png') center / contain no-repeat; filter: drop-shadow(0 3px 0 #e7a0aa); }
+.admin-users-banner::after, .admin-users-banner__people { display: none; }
+.admin-users-banner > div { display: none; }
 .admin-users-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; }
 .admin-users-filters, .admin-users-actions { display: flex; align-items: center; gap: 5px; }
 .admin-users-filters button, .admin-users-actions button, .admin-users-actions input { height: 23px; padding: 0 9px; border: 1px solid #cbd2d7; border-radius: 99px; color: #526578; background: #fff; font-size: 8px; white-space: nowrap; }
@@ -1587,6 +1589,88 @@ html[data-report-format="csv"] .admin-report-modal__exports button:nth-of-type(3
 .admin-users-person small, .admin-users-table td small { font-size: 9px; }
 .admin-users-table td em { padding: 5px 9px; font-size: 9px; }
 .admin-users-table td button { padding: 6px 10px; font-size: 9px; }
+.admin-user-modal-backdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 20px; background: #0d1c2f99; }
+.admin-user-modal { position: relative; display: grid; gap: 12px; width: min(430px, 100%); padding: 28px; border-radius: 18px; background: #fff; box-shadow: 0 18px 60px #0d1c2f40; color: #14253a; }
+.admin-user-modal h3 { margin: 0 0 6px; font: 700 21px Georgia, serif; }
+.admin-user-modal > label { display: grid; gap: 5px; color: #526578; font-size: 11px; font-weight: 700; }
+.admin-user-modal > label input, .admin-user-modal > label select { height: 36px; padding: 0 12px; border: 1px solid #d8dee2; border-radius: 8px; color: #14253a; background: #fff; }
+.admin-user-modal fieldset { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 2px 0 0; padding: 13px; border: 1px solid #efb0b6; border-radius: 10px; }
+.admin-user-modal legend { padding: 0 5px; color: #526578; font-size: 11px; font-weight: 700; }
+.admin-user-modal fieldset label { color: #526578; font-size: 11px; }
+.admin-user-modal fieldset input { accent-color: #df7884; }
+.admin-user-modal__submit { height: 38px; border: 0; border-radius: 99px; color: #fff; background: #14253a; cursor: pointer; font-weight: 700; }
+.admin-people-deactivate { margin-left: 6px; padding: 4px 8px; border: 1px solid #e39aa3; border-radius: 99px; color: #b65360; background: #fff; font-size: 8px; cursor: pointer; }
+.admin-people-deactivate:disabled { opacity: .55; cursor: wait; }
+.admin-users-filters button, .admin-users-actions button { height: 34px; padding: 0 16px; font-size: 11px; }
+.admin-users-actions input { width: 180px; height: 34px; padding: 0 13px; font-size: 10px; }
+.admin-users-table td button { min-height: 32px; padding: 0 14px; font-size: 10px; }
+.admin-users-table td button[aria-label="Mais ações"] { min-width: 32px; padding: 0; }
+.admin-users-status-action { color: #b65360 !important; border-color: #e39aa3 !important; }
+.admin-users-status-action:disabled { opacity: .45; cursor: not-allowed; }
+.admin-settings-table:has(.admin-settings-kpis)::before { display: block; width: calc(100% + 36px); height: auto; aspect-ratio: 1704 / 624; margin: -16px -18px 18px; border-radius: 8px; content: ''; background: url('../assets/products-banner.png') center / 100% 100% no-repeat; }
+.admin-products-banner { width: 100%; aspect-ratio: 1704 / 624; border-radius: 10px; background: url('../assets/products-banner.png') center / 100% 100% no-repeat; }
+.admin-products-workspace { gap: 8px; }
+.admin-products-banner { aspect-ratio: 1704 / 580; background-size: 100% auto; background-position: center bottom; background-repeat: no-repeat; }
+.admin-products-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; max-width: 720px; margin: 0 auto; }
+.admin-products-kpis article { display: grid; justify-items: center; gap: 4px; padding: 10px; border: 1px solid #e1e5e7; border-radius: 8px; background: #fff; }
+.admin-products-kpis strong { color: #526578; font: 700 20px Georgia, serif; }
+.admin-products-kpis span { color: #87949d; font-size: 9px; }
+.admin-products-toolbar { display: flex; gap: 6px; margin-top: 2px; }
+.admin-products-toolbar input, .admin-products-toolbar select, .admin-products-toolbar button { height: 28px; min-width: 0; padding: 0 9px; border: 1px solid #d8dee2; border-radius: 4px; color: #526578; background: #fff; font-size: 9px; }
+.admin-products-toolbar input { flex: 1; }
+.admin-products-table { width: 100%; border-collapse: collapse; border: 1px solid #dce1e4; color: #526578; font-size: 9px; }
+.admin-products-table th { padding: 7px; color: #87949d; background: #f7f8f9; font-size: 8px; text-align: left; }
+.admin-products-table td { padding: 7px; border-top: 1px solid #edf0f1; }
+.admin-products-table td em { padding: 3px 6px; border-radius: 99px; color: #27825e; background: #d9f1e4; font-size: 8px; font-style: normal; }
+.admin-products-new { justify-self: center; padding: 7px 14px; border: 0; border-radius: 99px; color: #fff; background: #df7884; font-size: 8px; font-weight: 700; }
+.admin-products-orders h3 { margin: 7px 0 8px; color: #14253a; font: 700 14px Georgia, serif; }
+.admin-products-order-columns { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.admin-products-order-columns article { min-height: 116px; padding: 7px; border-radius: 6px; background: #f5f6f8; }
+.admin-products-order-columns article:nth-child(1) { background: #fff0f1; }.admin-products-order-columns article:nth-child(2) { background: #edf3ff; }.admin-products-order-columns article:nth-child(3) { background: #fff5df; }.admin-products-order-columns article:nth-child(4) { background: #edf8f1; }
+.admin-products-order-columns header { display: flex; justify-content: space-between; color: #526578; font-size: 8px; }
+.admin-products-order-columns header span { display: grid; width: 15px; height: 15px; place-items: center; border-radius: 50%; background: #fff; }
+.admin-products-order-card { display: grid; gap: 2px; margin-top: 6px; padding: 6px; border-radius: 5px; background: #fff; box-shadow: 0 2px 5px #0000000b; color: #526578; font-size: 7px; }
+.admin-products-order-card { cursor: grab; user-select: none; }
+.admin-products-order-card:active, .admin-products-order-card.is-dragging { cursor: grabbing; opacity: .55; transform: rotate(1deg); }
+.admin-products-order-columns article { min-height: 145px; transition: background 160ms ease, outline 160ms ease; }
+.admin-products-order-columns article:has(.admin-products-order-card.is-dragging) { outline: 1px dashed #df7884; }
+.admin-products-order-card b { color: #14253a; }.admin-products-order-card small { color: #9aa3aa; }.admin-products-order-card em { color: #d27783; font-style: normal; }
+
+.admin-products-kpis { max-width: 820px; gap: 18px; }
+.admin-products-kpis article { min-height: 84px; padding: 15px 18px; }
+.admin-products-kpis strong { font-size: 28px; }
+.admin-products-kpis span { font-size: 12px; }
+.admin-products-toolbar { gap: 10px; }
+.admin-products-toolbar input, .admin-products-toolbar select, .admin-products-toolbar button { height: 38px; padding-inline: 13px; font-size: 12px; }
+.admin-products-table { font-size: 12px; }
+.admin-products-table th { padding: 11px 10px; font-size: 10px; }
+.admin-products-table td { padding: 12px 10px; }
+.admin-products-product { display: inline-flex; align-items: center; gap: 12px; min-width: 210px; }
+.admin-products-product img { width: 48px; height: 48px; border-radius: 7px; object-fit: cover; border: 1px solid #e3e7e9; background: #f7f8f9; }
+.admin-products-table td em { padding: 5px 9px; font-size: 10px; white-space: nowrap; }
+.admin-products-table td em.is-unavailable { color: #b65360; background: #fde7ea; }
+.admin-products-actions { display: flex; align-items: center; gap: 6px; }
+.admin-products-actions button { padding: 6px 9px; border: 1px solid #d5dde2; border-radius: 999px; color: #526578; background: #fff; font-size: 10px; cursor: pointer; }
+.admin-products-actions button:last-child { color: #b65360; border-color: #edb4bb; }
+.admin-products-actions button:hover { background: #f8e9eb; }
+.admin-product-image-hint { color: #87949d; font-size: 10px; font-weight: 400; }
+.admin-product-image-preview { width: 86px; height: 70px; margin-top: 4px; border: 1px solid #e1e5e7; border-radius: 7px; object-fit: cover; background: #f7f8f9; }
+.admin-products-new { padding: 10px 18px; font-size: 10px; }
+.admin-products-orders h3 { margin-top: 16px; font-size: 18px; }
+.admin-products-order-columns { gap: 10px; }
+.admin-products-order-columns article { min-height: 170px; padding: 10px; }
+.admin-products-order-columns header { font-size: 11px; }
+.admin-products-order-card { gap: 4px; margin-top: 8px; padding: 10px; font-size: 10px; }
+
+/* Mantém cada indicador financeiro em uma sequência vertical estável. */
+.admin-finance-stats article { position: relative; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 7px; min-width: 0; min-height: 120px; box-sizing: border-box; }
+.admin-finance-stats .admin-finance-stat-top { position: relative; flex: 0 0 28px; width: 100%; min-width: 0; }
+.admin-finance-stats .admin-finance-stat-top em, .admin-finance-stats .admin-finance-stat-top b { position: absolute; top: 0; right: 0; }
+.admin-finance-stats .admin-finance-stat-top em, .admin-finance-stats .admin-finance-stat-top b { white-space: nowrap; }
+.admin-finance-stats article > small, .admin-finance-stats article > strong, .admin-finance-stats article > span { display: block; width: 100%; min-width: 0; }
+.admin-finance-stats article > small { min-height: 14px; line-height: 1.2; white-space: normal; }
+.admin-finance-stats article > strong { line-height: 1.1; }
+.admin-finance-stats article > span { line-height: 1.25; }
 
 @media (min-width: 1000px) {
   .admin-page { grid-template-columns: calc(60 * var(--admin-unit)) minmax(0, 1fr); padding: calc(6 * var(--admin-unit)) calc(12 * var(--admin-unit)) calc(6 * var(--admin-unit)) 0; }

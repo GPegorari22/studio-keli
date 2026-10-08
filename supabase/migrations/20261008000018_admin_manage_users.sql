@@ -13,7 +13,7 @@ create or replace function public.admin_listar_usuarios_admin()
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 begin
   if not public.is_admin() then
@@ -54,7 +54,7 @@ create or replace function public.admin_criar_usuario_admin(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   novo_id uuid := gen_random_uuid();
@@ -94,7 +94,12 @@ begin
   );
 
   insert into public.usuario (id_usuario, email, nome, id_perfil, status)
-  values (novo_id, lower(trim(p_email)), trim(p_nome), perfil_admin, 'ativo');
+  values (novo_id, lower(trim(p_email)), trim(p_nome), perfil_admin, 'ativo')
+  on conflict (id_usuario) do update set
+    email = excluded.email,
+    nome = excluded.nome,
+    id_perfil = excluded.id_perfil,
+    status = excluded.status;
 
   insert into public.admin_usuario_permissao (id_usuario, financeiro, notificacoes, relatorios, usuarios, loja)
   values (
