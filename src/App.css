@@ -514,7 +514,7 @@
 /* Seção Espetáculos */
 .shows-section {
   position: relative;
-  padding: 48px 6vw 80px;
+  padding: clamp(104px, 10vw, 152px) 6vw 80px;
   background: url('./assets/secao-espetaculos.png') center center / cover no-repeat;
   background-color: var(--off-white);
   animation: section-enter 700ms ease-out 420ms both;
@@ -524,6 +524,25 @@
   max-width: 1180px;
   margin: 0 auto;
   text-align: center;
+}
+
+.shows-section h2 {
+  display: flex;
+  align-items: center;
+  gap: clamp(18px, 3vw, 42px);
+  width: 100vw;
+  margin: 0 0 0 calc((min(1180px, 88vw) - 100vw) / 2);
+  color: var(--navy);
+  font-size: clamp(1.35rem, 2vw, 1.8rem);
+  letter-spacing: .01em;
+}
+
+.shows-section h2::before,
+.shows-section h2::after {
+  flex: 1;
+  height: 1px;
+  content: '';
+  background: #102239;
 }
 
 .shows-lead {
