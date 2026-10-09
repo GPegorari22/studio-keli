@@ -13,9 +13,9 @@ import logoRosa from './assets/logo-rosa.png'
 import logoBranca from './assets/logo-branca.png'
 import tourStudio from './assets/tour-studio.mp4'
 import separacaoPagina from './assets/separacao-pagina.png'
-import enrolados from './assets/enrolados.png'
-import brancaNeve from './assets/branca-neve.png'
-import belaFera from './assets/bela-fera.png'
+import showEnrolados from './assets/show-enrolados.png'
+import showBrancaNeve from './assets/show-branca-neve.png'
+import showBelaFera from './assets/show-bela-fera.png'
 import secaoEspetaculos from './assets/secao-espetaculos.png'
 import professoraGenerica from './assets/professora-generica.png'
 import './App.css'
@@ -49,9 +49,9 @@ const teacherDetails = {
 }
 
 const shows = [
-  { name: 'Enrolados', image: enrolados, slug: 'enrolados', year: '2022' },
-  { name: 'Branca de Neve', image: brancaNeve, slug: 'branca-de-neve', featured: true, year: '2025' },
-  { name: 'Bela e a Fera', image: belaFera, slug: 'bela-e-a-fera', year: '2023' },
+  { name: 'Enrolados', image: showEnrolados, slug: 'enrolados', year: '2022' },
+  { name: 'Branca de Neve', image: showBrancaNeve, slug: 'branca-de-neve', featured: true, year: '2025' },
+  { name: 'Bela e a Fera', image: showBelaFera, slug: 'bela-e-a-fera', year: '2023' },
 ]
 
 const balletClassGroups = [

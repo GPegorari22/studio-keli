@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import welcomeBanner from '../assets/admin-welcome.png'
 import featureBanner from '../assets/admin-features.png'
 import profileIcon from '../assets/perfil-adm.png'
@@ -39,6 +39,7 @@ const navigation = [
   ['agenda', 'Agenda', 'calendar'], ['frequencia', 'Frequência', 'chart'], ['configuracoes', 'Configurações', 'settings'],
 ]
 const moduleNames = { alunos: 'Alunos', professores: 'Professores', turmas: 'Turmas', agenda: 'Agenda de aulas', frequencia: 'Frequência dos alunos', financeiro: 'Financeiro', matriculas: 'Matrículas', pedidos: 'Pedidos da loja', produtos: 'Produtos', notificacoes: 'Notificações', busca: 'Resultados da busca' }
+const searchAreas = [['alunos', 'Alunos'], ['professores', 'Professores'], ['turmas', 'Turmas'], ['agenda', 'Agenda'], ['frequencia', 'Frequência'], ['financeiro', 'Financeiro'], ['matriculas', 'Matrículas'], ['pedidos', 'Pedidos da loja'], ['produtos', 'Produtos'], ['notificacoes', 'Notificações']]
 navigation[4] = ['financeiro', 'Financeiro', 'chart']
 const columns = {
   alunos: [['nome', 'Aluno'], ['turma', 'Turma'], ['modalidade', 'Modalidade'], ['status', 'Cadastro'], ['alertas', 'Alertas']],
@@ -172,7 +173,7 @@ export default function AdminDashboard({ session, sessionLoading = false, naviga
   }, [session?.user?.id, range.inicio, range.fim, classId, today, revision])
 
   useEffect(() => {
-    if (!session?.user?.id || !moduleNames[view]) return undefined
+    if (!session?.user?.id || !moduleNames[view] || view === 'busca') { if (view === 'busca') { setRecords(null); setListLoading(false) } return undefined }
     let active = true
     setListLoading(true)
     setListError('')
@@ -193,7 +194,9 @@ export default function AdminDashboard({ session, sessionLoading = false, naviga
     const agenda = module === 'agenda'
     const lastDay = new Date(today + 'T12:00:00-03:00')
     lastDay.setUTCDate(lastDay.getUTCDate() + 30)
-    setList({ busca: query, filtro: filter, pagina: 0, inicio: agenda ? today : '', fim: agenda ? studioDate(lastDay) : '' })
+    const firstSearchDay = new Date(today + 'T12:00:00-03:00')
+    firstSearchDay.setUTCDate(firstSearchDay.getUTCDate() - 1066)
+    setList({ busca: query, filtro: filter, pagina: 0, inicio: agenda ? today : module === 'busca' ? studioDate(firstSearchDay) : '', fim: agenda ? studioDate(lastDay) : module === 'busca' ? studioDate(lastDay) : '' })
     setRecords(null)
     setSelected(null)
     setView(module)
@@ -214,6 +217,7 @@ export default function AdminDashboard({ session, sessionLoading = false, naviga
   const name = dashboard?.usuario?.nome?.trim().split(/\s+/)[0]
   const userGreeting = name ? 'Bom dia, ' + name + '!' : 'Bom dia!'
   const canShow = Boolean(session?.user?.id)
+  const matchingSearchAreas = searchAreas.filter(([, label]) => !search.trim() || label.toLocaleLowerCase('pt-BR').includes(search.trim().toLocaleLowerCase('pt-BR')))
 
   return <main className="admin-page">
     <aside className="admin-sidebar">
@@ -226,11 +230,11 @@ export default function AdminDashboard({ session, sessionLoading = false, naviga
     <section className={'admin-surface admin-surface--' + view} ref={workspaceRef}>
       <header className="admin-header">
         <h1>{userGreeting}</h1>
-        <form className="admin-search" role="search" onSubmit={(event) => { event.preventDefault(); if (search.trim()) openView('busca', '', search.trim()) }}>
+        <div className="admin-search-wrap"><form className="admin-search" role="search" onSubmit={(event) => { event.preventDefault(); const exact = matchingSearchAreas.find(([, label]) => label.toLocaleLowerCase('pt-BR') === search.trim().toLocaleLowerCase('pt-BR')); if (exact) { setSearch(''); openView(exact[0]) } }}>
           <label className="admin-sr-only" htmlFor="admin-search">Pesquisar no sistema</label>
           <input id="admin-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar no sistema" />
           <button type="submit" aria-label="Buscar"><Icon name="search" /></button>
-        </form>
+        </form>{search.trim() && <div className="admin-search-dropdown" role="listbox"><small>Áreas encontradas</small>{matchingSearchAreas.map(([module, label]) => <button type="button" key={module} onClick={() => { setSearch(''); openView(module) }}><span>{label}</span><Icon name="arrow" /></button>)}{!matchingSearchAreas.length && <p>Nenhuma área encontrada.</p>}</div>}</div>
         <button className="admin-bell" type="button" aria-label={'Notificações' + (dashboard?.notificacoes_nao_lidas ? ', ' + dashboard.notificacoes_nao_lidas + ' não lidas' : '')} onClick={() => openView('notificacoes')}><Icon name="bell" />{dashboard?.notificacoes_nao_lidas > 0 && <span>{dashboard.notificacoes_nao_lidas}</span>}</button>
       </header>
       <div className="admin-body">
@@ -240,14 +244,15 @@ export default function AdminDashboard({ session, sessionLoading = false, naviga
               : dashboard && view === 'dashboard' ? <DashboardContent data={dashboard} now={now} period={period} setPeriod={setPeriod} classId={classId} setClassId={setClassId} openView={openView} loading={loading} />
                 : dashboard && view === 'configuracoes' ? <AdminSettingsWorkspace data={dashboard} openView={openView} />
                 : dashboard && view === 'perfil' ? <ProfileView data={dashboard.usuario} settings={false} openView={openView} />
-                : dashboard && view === 'alunos' ? <PeopleView data={dashboard} list={list} setList={setList} records={records} loading={listLoading} error={listError} refresh={refresh} openView={openView} onSelect={setSelected} turmas={dashboard.turmas} classId={classId} setClassId={setClassId} />
+                : dashboard && ['alunos', 'professores', 'turmas'].includes(view) ? <PeopleView view={view} data={dashboard} list={list} setList={setList} records={records} loading={listLoading} error={listError} refresh={refresh} openView={openView} onSelect={setSelected} turmas={dashboard.turmas} classId={classId} setClassId={setClassId} onOpenClass={(turma = null) => { setSelectedClass(turma); setClassModalOpen(true) }} />
                 : dashboard && view === 'matriculas' ? <MatriculasView data={dashboard} list={list} setList={setList} records={records} loading={listLoading} error={listError} refresh={refresh} openView={openView} onSelect={setSelected} onOpenEnrollment={(lead = null) => { setEnrollmentLead(lead); setEnrollmentModalOpen(true) }} />
                 : dashboard && view === 'turmas' ? <TurmasView onBack={() => openView('dashboard')} onOpenClass={(turma = null) => { setSelectedClass(turma); setClassModalOpen(true) }} />
                   : dashboard && view === 'agenda' ? <AgendaView today={today} openView={openView} />
                   : dashboard && view === 'financeiro' ? <FinanceiroView data={dashboard} list={list} setList={setList} records={records} loading={listLoading} error={listError} refresh={refresh} openView={openView} />
                   : dashboard && view === 'notificacoes' ? <NotificationsView data={dashboard} records={records} loading={listLoading} error={listError} refresh={refresh} openView={openView} onSelect={setSelected} />
                   : dashboard && view === 'relatorios' ? <ReportsView data={dashboard} openView={openView} />
-                  : dashboard && <RecordsView view={view} list={list} setList={setList} data={records} loading={listLoading} error={listError} refresh={refresh} openView={openView} onSelect={setSelected} turmas={dashboard.turmas} classId={classId} setClassId={setClassId} range={range} now={now} />}
+                : dashboard && view === 'busca' ? <SearchAreasView query={list.busca} openView={openView} />
+                : dashboard && <RecordsView view={view} list={list} setList={setList} data={records} loading={listLoading} error={listError} refresh={refresh} openView={openView} onSelect={setSelected} turmas={dashboard.turmas} classId={classId} setClassId={setClassId} range={range} now={now} />}
       </div>
       <footer className="admin-footer">Studio Keli Dalpian&nbsp; | &nbsp;© {today.slice(0, 4)}</footer>
     </section>
@@ -255,7 +260,7 @@ export default function AdminDashboard({ session, sessionLoading = false, naviga
       ? <StudentProfileDialog student={selected} onClose={() => setSelected(null)} />
       : <RecordDialog record={selected} onClose={() => setSelected(null)} onRead={readNotification} />)}
     {enrollmentModalOpen && <EnrollmentModal initialStudent={enrollmentLead} turmas={dashboard?.turmas || []} onClose={() => { setEnrollmentModalOpen(false); setEnrollmentLead(null) }} onSaved={() => { setEnrollmentModalOpen(false); setEnrollmentLead(null); refresh() }} />}
-    {classModalOpen && <ClassModal turma={selectedClass} onClose={() => { setClassModalOpen(false); setSelectedClass(null) }} onSaved={() => { setClassModalOpen(false); setSelectedClass(null); refresh() }} />}
+    {classModalOpen && <ClassModalFixed turma={selectedClass} onClose={() => { setClassModalOpen(false); setSelectedClass(null) }} onSaved={() => { setClassModalOpen(false); setSelectedClass(null); refresh() }} />}
   </main>
 }
 
@@ -603,11 +608,14 @@ function SelectField({ label, value, onChange, options, required = false }) {
   return <label className="admin-enrollment-modal__field"><span>{label}{required && <b>*</b>}</span><div><select value={value} onChange={(event) => onChange(event.target.value)} required={required}>{options.map((option) => <option key={option} value={option}>{option}</option>)}</select></div></label>
 }
 
-function PeopleView({ data, list, setList, records, loading, error, refresh, openView, onSelect, turmas, classId, setClassId }) {
+function PeopleView({ view = 'alunos', data, list, setList, records, loading, error, refresh, openView, onSelect, turmas, classId, setClassId, onOpenClass }) {
+  if (view === 'professores' || view === 'turmas') return <><PeopleTop data={data} openView={openView} /><PeopleDirectory view={view} list={list} setList={setList} records={records} loading={loading} error={error} refresh={refresh} openView={openView} onSelect={onSelect} onOpenClass={onOpenClass} /></>
   const stats = data.indicadores || {}
   const pending = data.pendencias?.matriculas || 0
   const options = filterOptions('alunos')
+  const modalityOptions = [...new Set(['Ballet clássico', 'Jazz', 'Sapateado', ...(turmas || []).map((turma) => turma.modalidade).filter(Boolean)])].sort((a, b) => a.localeCompare(b, 'pt-BR'))
   const [changingStudentId, setChangingStudentId] = useState(null)
+  const [filtersOpen, setFiltersOpen] = useState(true)
   const change = (field, value) => setList((current) => ({ ...current, [field]: value, pagina: 0 }))
   const students = records?.registros || []
   const toggleStudentStatus = async (student) => {
@@ -635,14 +643,13 @@ function PeopleView({ data, list, setList, records, loading, error, refresh, ope
         <button type="button" role="tab" onClick={() => openView('professores')}>Professores</button>
         <button type="button" role="tab" onClick={() => openView('turmas')}>Turmas</button>
       </div>
-      <button className="admin-people-new" type="button" onClick={() => openView('matriculas')}>+ <span>Novo aluno</span></button>
     </div>
-    <div className="admin-people-filters">
+    <div className={'admin-people-filters' + (filtersOpen ? ' is-open' : ' is-collapsed')}>
       <label className="admin-people-search"><Icon name="search" /><span className="admin-sr-only">Pesquisar alunos</span><input id="admin-people-search" placeholder="Pesquisar por nome, matrícula ou e-mail..." value={list.busca} onChange={(event) => change('busca', event.target.value)} /></label>
       <select aria-label="Filtrar status" value={list.filtro} onChange={(event) => change('filtro', event.target.value)}>{options.map(([value, label]) => <option key={value} value={value}>{value === '' ? 'Todos os status' : label}</option>)}</select>
       <select aria-label="Filtrar turma" value={classId} onChange={(event) => setClassId(event.target.value)}><option value="">Todas as turmas</option>{turmas?.map((turma) => <option key={turma.id} value={turma.id}>{turma.nome}</option>)}</select>
-      <select aria-label="Filtrar modalidade"><option>Todas as modalidades</option></select>
-      <button type="button" className="admin-people-filter-button"><Icon name="filter" /> Filtros</button>
+      <select aria-label="Filtrar modalidade" value={list.modalidade || ''} onChange={(event) => change('modalidade', event.target.value)}><option value="">Todas as modalidades</option>{modalityOptions.map((modality) => <option key={modality} value={modality}>{modality}</option>)}</select>
+      <button type="button" className={'admin-people-filter-button' + (filtersOpen ? ' is-active' : '')} onClick={() => setFiltersOpen((current) => !current)} aria-expanded={filtersOpen}><Icon name="filter" /> Filtros</button>
     </div>
     {loading ? <StateMessage title="Carregando alunos..." loading /> : error ? <StateMessage title={error} action={refresh} /> : <div className="admin-people-table-wrap">
       <table className="admin-people-table"><thead><tr><th>Aluno</th><th>Matrícula</th><th>Turma</th><th>Modalidade</th><th>Status</th><th><span className="admin-sr-only">Ações</span></th></tr></thead><tbody>
@@ -656,6 +663,100 @@ function PeopleView({ data, list, setList, records, loading, error, refresh, ope
     </div>}
     {records && <div className="admin-pagination"><span>{records.total} aluno{records.total === 1 ? '' : 's'} encontrados</span><button disabled={!list.pagina} onClick={() => setList((current) => ({ ...current, pagina: current.pagina - 1 }))}>Anterior</button><button disabled={(list.pagina + 1) * 25 >= records.total} onClick={() => setList((current) => ({ ...current, pagina: current.pagina + 1 }))}>Próxima</button></div>}
   </section>
+}
+function PeopleTop({ data, openView }) {
+  return <div className="admin-people-top"><header className="admin-people-heading"><div><h2>Gestão de Pessoas</h2><p>Gerencie alunos, professores e turmas do<br />Studio aqui.</p></div><div className="admin-people-heading-actions"><button type="button" aria-label="Pesquisar" onClick={() => document.getElementById('admin-people-search')?.focus()}><Icon name="search" /></button><button type="button" aria-label="Notificações" onClick={() => openView('notificacoes')}><Icon name="bell" /></button></div></header><div className="admin-people-stats"><PeopleStat icon="people" label="Alunos ativos" value={data.indicadores?.alunos_ativos} note="cadastros ativos" /><PeopleStat icon="dance" label="Professores" value={data.indicadores?.professores} note="profissionais ativos" /><PeopleStat icon="calendar" label="Turmas ativas" value={data.indicadores?.turmas_ativas} note="turmas do Studio" /><PeopleStat icon="document" label="Matrículas pendentes" value={data.pendencias?.matriculas || 0} note="aguardando aprovação" /></div></div>
+}
+function PeopleDirectory({ view, list, setList, records, loading, error, refresh, openView, onSelect, onOpenClass }) {
+  const [roster, setRoster] = useState({})
+  const [creating, setCreating] = useState(false)
+  const [teacherModal, setTeacherModal] = useState(false)
+  const [teacherForm, setTeacherForm] = useState({ nome: '', email: '', telefone: '', especialidade: '' })
+  const [teacherError, setTeacherError] = useState('')
+  const [detailClass, setDetailClass] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
+  useEffect(() => {
+    if (view !== 'turmas') return undefined
+    let active = true
+    Promise.all((records?.registros || []).map((turma) => supabase.rpc('admin_listagem', { p_modulo: 'alunos', p_busca: '', p_filtro: '', p_inicio: null, p_fim: null, p_turma: Number(turma.id), p_pagina: 0 }).then(({ data: result }) => [turma.id, result?.registros || []]))).then((entries) => { if (!active) return; setRoster(Object.fromEntries(entries.map(([id, students]) => [id, students.map((student) => student.nome || 'Aluno')]))) })
+    return () => { active = false }
+  }, [view, records])
+  const change = (value) => setList((current) => ({ ...current, busca: value, pagina: 0 }))
+  const createTeacher = async (event) => { event.preventDefault(); if (!teacherForm.nome.trim()) { setTeacherError('Informe o nome do professor.'); return } setCreating(true); setTeacherError(''); const result = await supabase.from('professor').insert({ nome: teacherForm.nome.trim(), email: teacherForm.email.trim() || null, telefone: teacherForm.telefone.trim() || null, especialidade: teacherForm.especialidade.trim() || null, status: 'ativo' }); setCreating(false); if (result.error) setTeacherError(result.error.message || 'Não foi possível cadastrar o professor.'); else { setTeacherModal(false); setTeacherForm({ nome: '', email: '', telefone: '', especialidade: '' }); refresh() } }
+  const rows = records?.registros || []
+  const deleteClass = async (turma) => {
+    if (!window.confirm(`Apagar a turma "${turma.nome}"? As matrículas e aulas vinculadas serão preservadas.`)) return
+    setDeletingId(turma.id)
+    const { error: requestError } = await supabase.rpc('excluir_turma_admin', { p_id_turma: Number(turma.id) })
+    setDeletingId(null)
+    if (requestError) { setDetailClass({ ...turma, _error: requestError.message || 'Não foi possível apagar a turma.' }); return }
+    setDetailClass(null)
+    refresh()
+  }
+  useEffect(() => {
+    if (view !== 'turmas') return undefined
+    const filterButton = document.querySelector('.admin-people-filter-button')
+    if (filterButton) {
+      filterButton.innerHTML = '<span aria-hidden="true">＋</span> Nova turma'
+      filterButton.onclick = () => onOpenClass?.()
+    }
+    const table = document.querySelector('.admin-people-table')
+    const header = table?.querySelector('thead tr')
+    if (header && !header.querySelector('[data-class-actions-heading]')) {
+      const cell = document.createElement('th'); cell.dataset.classActionsHeading = 'true'; cell.textContent = 'Ações'; header.appendChild(cell)
+    }
+    const tableRows = table?.querySelectorAll('tbody tr') || []
+    tableRows.forEach((tableRow, index) => {
+      tableRow.querySelector('[data-class-actions]')?.parentElement?.remove()
+      const turma = rows[index]
+      if (!turma) return
+      const cell = document.createElement('td'); cell.className = 'admin-class-actions'; cell.dataset.classActions = 'true'
+      const details = document.createElement('button'); details.type = 'button'; details.textContent = 'Detalhes'; details.onclick = () => onSelect?.({ ...turma, _modulo: 'turmas' })
+      const edit = document.createElement('button'); edit.type = 'button'; edit.textContent = 'Editar'; edit.onclick = () => onOpenClass?.(turma)
+      const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = deletingId === turma.id ? '...' : 'Apagar'; remove.className = 'is-danger'; remove.disabled = deletingId === turma.id; remove.onclick = () => deleteClass(turma)
+      cell.append(details, edit, remove); tableRow.appendChild(cell)
+    })
+    return undefined
+  }, [view, rows, onOpenClass, onSelect, deletingId])
+  useEffect(() => {
+    if (view !== 'professores') return undefined
+    const button = document.querySelector('.admin-people-new')
+    if (!button) return undefined
+    const openTeacherModal = (event) => {
+      event.preventDefault(); event.stopImmediatePropagation()
+      if (document.querySelector('.admin-teacher-modal-backdrop')) return
+      const backdrop = document.createElement('div'); backdrop.className = 'admin-teacher-modal-backdrop'
+      backdrop.innerHTML = '<form class="admin-teacher-modal"><button type="button" class="admin-teacher-modal__close" aria-label="Fechar">×</button><h2>Cadastrar professor</h2><p>Preencha os dados do professor para adicioná-lo ao Studio.</p><label>Nome completo<input name="nome" required placeholder="Informe o nome completo" /></label><label>E-mail<input name="email" type="email" placeholder="professor@exemplo.com" /></label><label>Telefone<input name="telefone" placeholder="(00) 00000-0000" /></label><label>Especialidade<input name="especialidade" placeholder="Ex.: Ballet clássico" /></label><p class="admin-teacher-modal__error" role="alert"></p><footer><button type="button" class="admin-teacher-modal__cancel">Cancelar</button><button type="submit" class="admin-teacher-modal__submit">Cadastrar professor</button></footer></form>'
+      document.body.appendChild(backdrop)
+      const form = backdrop.querySelector('form')
+      const definedModalities = ['Ballet clássico', 'Jazz', 'Sapateado']
+      const modalityInputForOptions = form?.querySelector('[name="especialidade"]')
+      const modalityLabelForOptions = modalityInputForOptions?.closest('label')
+      if (modalityInputForOptions && modalityLabelForOptions) {
+        modalityInputForOptions.type = 'hidden'
+        const options = document.createElement('div'); options.className = 'admin-teacher-modal__modality-options'
+        options.innerHTML = definedModalities.map((modality) => `<button type="button" data-modality-option="${modality}">${modality}</button>`).join('')
+        modalityLabelForOptions.appendChild(options)
+        options.querySelectorAll('[data-modality-option]').forEach((option) => { option.onclick = () => { const value = option.dataset.modalityOption; const values = (modalityInputForOptions.dataset.values || '').split('|').filter(Boolean); const next = values.includes(value) ? values.filter((item) => item !== value) : [...values, value]; modalityInputForOptions.dataset.values = next.join('|'); modalityInputForOptions.value = ''; option.classList.toggle('is-selected', next.includes(value)) } })
+      }
+      const modalityInput = backdrop.querySelector('[name="especialidade"]')
+      const modalityLabel = modalityInput?.closest('label')
+      if (modalityInput && modalityLabel) {
+        modalityLabel.firstChild.textContent = 'Modalidades'
+        modalityInput.placeholder = 'Digite uma modalidade e pressione Enter'
+        modalityInput.dataset.values = ''
+        const chips = document.createElement('div'); chips.className = 'admin-teacher-modal__chips'; modalityLabel.appendChild(chips)
+        const addModality = () => { const value = modalityInput.value.trim().replace(/,$/, ''); if (!value) return; const values = [...new Set((modalityInput.dataset.values || '').split('|').filter(Boolean).concat(value))]; modalityInput.dataset.values = values.join('|'); modalityInput.value = ''; chips.innerHTML = values.map((item) => `<span>${item}<button type="button" data-remove-modality="${item}">×</button></span>`).join(''); chips.querySelectorAll('[data-remove-modality]').forEach((removeButton) => { removeButton.onclick = () => { modalityInput.dataset.values = (modalityInput.dataset.values || '').split('|').filter((item) => item !== removeButton.dataset.removeModality).join('|'); removeButton.parentElement.remove() } }) }
+        modalityInput.addEventListener('keydown', (keyEvent) => { if (keyEvent.key === 'Enter' || keyEvent.key === ',') { keyEvent.preventDefault(); addModality() } })
+        form?.addEventListener('submit', () => { addModality(); modalityInput.value = (modalityInput.dataset.values || '').split('|').filter(Boolean).join(', ') }, true)
+      }
+      const close = () => backdrop.remove(); backdrop.querySelector('.admin-teacher-modal__close').onclick = close; backdrop.querySelector('.admin-teacher-modal__cancel').onclick = close
+      form.onsubmit = async (submitEvent) => { submitEvent.preventDefault(); const fields = new FormData(form); const submit = form.querySelector('.admin-teacher-modal__submit'); const errorMessage = form.querySelector('.admin-teacher-modal__error'); submit.disabled = true; submit.textContent = 'Salvando...'; const result = await supabase.from('professor').insert({ nome: String(fields.get('nome') || '').trim(), email: String(fields.get('email') || '').trim() || null, telefone: String(fields.get('telefone') || '').trim() || null, especialidade: String(fields.get('especialidade') || '').trim() || null, status: 'ativo' }); if (result.error) { errorMessage.textContent = result.error.message || 'Não foi possível cadastrar o professor.'; submit.disabled = false; submit.textContent = 'Cadastrar professor' } else { close(); refresh() } }
+    }
+    button.addEventListener('click', openTeacherModal, true)
+    return () => button.removeEventListener('click', openTeacherModal, true)
+  }, [view, refresh])
+  return <section className="admin-people" aria-busy={loading}><header className="admin-people-heading"><div><h2>Gestão de Pessoas</h2><p>Alunos, professores e turmas em uma única gestão.</p></div></header><div className="admin-people-toolbar"><div className="admin-people-tabs" role="tablist"><button type="button" className={view === 'alunos' ? 'is-active' : ''} onClick={() => openView('alunos')}>Alunos</button><button type="button" className={view === 'professores' ? 'is-active' : ''} onClick={() => openView('professores')}>Professores</button><button type="button" className={view === 'turmas' ? 'is-active' : ''} onClick={() => openView('turmas')}>Turmas</button></div>{view === 'professores' && <button className="admin-people-new" type="button" onClick={createTeacher} disabled={creating}>{creating ? 'Salvando...' : '+ Novo professor'}</button>}</div><div className="admin-people-filters"><label className="admin-people-search"><Icon name="search" /><input value={list.busca} onChange={(event) => change(event.target.value)} placeholder={view === 'professores' ? 'Pesquisar professor...' : 'Pesquisar turma...'} /></label><button type="button" className="admin-people-filter-button" onClick={refresh}><Icon name="filter" /> Atualizar</button></div>{loading ? <StateMessage title="Carregando dados..." loading /> : error ? <StateMessage title={error} action={refresh} /> : <div className="admin-people-table-wrap"><table className="admin-people-table"><thead>{view === 'professores' ? <tr><th>Professor</th><th>Especialidade</th><th>E-mail</th><th>Status</th></tr> : <tr><th>Turma</th><th>Modalidade</th><th>Professor</th><th>Alunos matriculados</th><th>Horário</th><th>Status</th></tr>}</thead><tbody>{rows.map((row) => view === 'professores' ? <tr key={row.id}><td><strong>{row.nome || 'Professor'}</strong></td><td>{row.especialidade || '—'}</td><td>{row.email || '—'}</td><td><span className="admin-people-status active">{row.status || 'Ativo'}</span></td></tr> : <tr key={row.id}><td><strong>{row.nome || 'Turma'}</strong></td><td>{row.modalidade || '—'}</td><td>{row.professora || '—'}</td><td title={(roster[row.id] || []).join(', ')}>{roster[row.id]?.length || 0}{roster[row.id]?.length ? ` · ${(roster[row.id] || []).slice(0, 2).join(', ')}` : ''}</td><td>{row.dia || '—'} · {String(row.horario || '').slice(0, 5) || '—'}</td><td><span className="admin-people-status active">{row.status || 'Ativo'}</span></td></tr>)}</tbody></table>{!rows.length && <p className="admin-list-empty">Nenhum registro encontrado.</p>}</div>}</section>
 }
 function PeopleStat({ icon, label, value, note }) {
   return <article className="admin-people-stat"><span className="admin-people-stat-icon"><Icon name={icon} tone="stat" /></span><div><small>{label}</small><strong>{value == null ? '—' : Number(value).toLocaleString('pt-BR')}</strong><em>{note}</em></div></article>
@@ -755,7 +856,7 @@ function AgendaView({ today, openView }) {
   return <section className="admin-agenda-view" aria-busy={loading}>
     <header className="admin-agenda-view__heading"><div><h2>Agenda Administrativa</h2><p>Organize aulas, compromissos e avisos do Studio.</p></div><div className="admin-agenda-view__actions"><button type="button" aria-label="Pesquisar" onClick={() => openView('busca')}><Icon name="search" /></button><button type="button" aria-label="Notificações" onClick={() => openView('notificacoes')}><Icon name="bell" /></button></div></header>
     <div className="admin-agenda-toolbar"><div className="admin-agenda-month"><button type="button" aria-label="Mês anterior" onClick={() => shiftMonth(-1)}>‹</button><strong>{monthTitle.charAt(0).toUpperCase() + monthTitle.slice(1)}</strong><button type="button" aria-label="Próximo mês" onClick={() => shiftMonth(1)}>›</button></div><div className="admin-agenda-filters"><button type="button" onClick={() => { setCursor(new Date(today + 'T12:00:00')); setSelectedDate(today) }}>Hoje</button><button type="button">Ver mês</button><button type="button">Aulas</button><button type="button">Ensaios</button><button type="button">Espetáculos</button><button type="button">Avisos</button><button type="button" onClick={() => { setEvents([]); setSelectedDate(today) }}>Limpar filtros</button></div></div>
-    <div className="admin-agenda-layout"><section className="admin-agenda-calendar"><div className="admin-agenda-weekdays">{['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day, index) => <span key={day + index}>{day}</span>)}</div><div className="admin-agenda-grid">{cells.map((date) => { const dateKey = isoDate(date); const dayEvents = eventFor(date); const outside = date.getMonth() !== cursor.getMonth(); return <button key={dateKey} type="button" className={'admin-agenda-day' + (outside ? ' is-outside' : '') + (dateKey === selectedDate ? ' is-selected' : '')} onClick={() => setSelectedDate(dateKey)}><time>{date.getDate()}</time>{dayEvents.slice(0, 2).map((event, index) => <span key={event.id || index} className={'admin-agenda-dot admin-agenda-dot--' + (index % 3)} title={event.nome}>{event.nome}</span>)}</button> })}</div></section><aside className="admin-agenda-side"><section className="admin-agenda-day-panel"><h3>Agenda do dia</h3><strong>{dateLabel(selectedDate, { day: '2-digit', month: 'long' })}</strong>{selectedEvents.length ? selectedEvents.map((event, index) => <p key={event.id || index}><i className={'admin-agenda-dot admin-agenda-dot--' + (index % 3)} />{event.inicio?.slice(0, 5) || '—'} — {event.nome || 'Compromisso'}<small>{event.modalidade || event.professora || 'Studio'}</small></p>) : <p className="admin-agenda-empty">Nenhum compromisso neste dia.</p>}</section><section className="admin-agenda-commitment"><h3>Novo compromisso</h3><p>Adicione um compromisso à agenda administrativa.</p><button type="button" onClick={() => openView('agenda')}>+ Adicionar à agenda</button></section></aside></div>
+    <div className="admin-agenda-layout"><section className="admin-agenda-calendar"><div className="admin-agenda-weekdays">{['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day, index) => <span key={day + index}>{day}</span>)}</div><div className="admin-agenda-grid">{cells.map((date) => { const dateKey = isoDate(date); const dayEvents = eventFor(date); const outside = date.getMonth() !== cursor.getMonth(); return <button key={dateKey} type="button" className={'admin-agenda-day' + (outside ? ' is-outside' : '') + (dateKey === selectedDate ? ' is-selected' : '')} onClick={() => setSelectedDate(dateKey)}><time>{date.getDate()}</time>{dayEvents.slice(0, 2).map((event, index) => <span key={event.id || index} className={'admin-agenda-dot admin-agenda-dot--' + (index % 3)} title={event.nome}>{event.nome}</span>)}</button> })}</div></section><aside className="admin-agenda-side"><section className="admin-agenda-day-panel"><h3>Agenda do dia</h3><strong>{dateLabel(selectedDate, { day: '2-digit', month: 'long' })}</strong>{selectedEvents.length ? selectedEvents.map((event, index) => <p key={event.id || index}><i className={'admin-agenda-dot admin-agenda-dot--' + (index % 3)} />{event.inicio?.slice(0, 5) || '—'} — {event.nome || 'Compromisso'}<small>{event.modalidade || event.professora || 'Studio'}</small></p>) : <p className="admin-agenda-empty">Nenhum compromisso neste dia.</p>}</section><section className="admin-agenda-commitment"><h3>Novo compromisso</h3><p>Adicione um compromisso à agenda administrativa.</p><button type="button" onClick={() => { const field = document.querySelector('.admin-agenda-notice__title input'); field?.scrollIntoView({ behavior: 'smooth', block: 'center' }); field?.focus() }}>+ Adicionar à agenda</button></section></aside></div>
     <div className="admin-agenda-bottom"><img className="admin-agenda-notice-art" src={centralAvisoImage} alt="Central de avisos: crie um aviso para comunicar alunos, professores ou responsáveis." /><section className="admin-agenda-notice"><label className="admin-agenda-notice__title">Título do aviso<input placeholder="Ex: Alteração no horário da aula." /></label><label>Destinatários<select><option>Selecionar destinatários</option><option>Todos os alunos</option><option>Professores</option><option>Responsáveis</option></select></label><label>Tipo de aviso<select><option>Informativo</option><option>Urgente</option></select></label><label>Data de publicação<input type="date" defaultValue="2026-09-23" /></label><label className="admin-agenda-notice__message">Mensagem<textarea placeholder="Digite aqui o conteúdo do aviso..." /></label><div className="admin-agenda-notice__options"><label><input type="checkbox" defaultChecked /> Fixar aviso</label><label><input type="checkbox" /> Enviar no WhatsApp</label></div><div><button type="button">Cancelar</button><button type="button">Publicar aviso</button></div></section></div>
   </section>
 }
@@ -763,6 +864,7 @@ function AgendaView({ today, openView }) {
 function ClassModal({ turma, onClose, onSaved }) {
   const [form, setForm] = useState({ nome: turma?.nome || '', modalidade: turma?.modalidade || '', professora: turma?.professora || '', dia: turma?.dia || 'segunda-feira', horario: String(turma?.horario || '').slice(0, 5), capacidade: turma?.capacidade || 20, status: turma?.status || 'ativo' })
   const [modalities, setModalities] = useState(() => turma?.modalidade ? [turma.modalidade] : [])
+  const [professors, setProfessors] = useState(() => turma?.professora ? [{ nome: turma.professora }] : [])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const setField = (field, value) => setForm((current) => ({ ...current, [field]: value }))
@@ -773,8 +875,24 @@ function ClassModal({ turma, onClose, onSaved }) {
       const values = [...new Set(data.map((item) => item.modalidade).filter(Boolean))]
       setModalities((current) => [...new Set([...current, ...values])])
     }).catch(() => {})
+    supabase.from('professor').select('nome').eq('status', 'ativo').order('nome').then(({ data }) => {
+      if (!active || !Array.isArray(data)) return
+      setProfessors((current) => [...new Map([...current, ...data].filter((item) => item.nome).map((item) => [item.nome, item])).values()])
+    }).catch(() => {})
     return () => { active = false }
   }, [])
+  useEffect(() => {
+    const label = [...document.querySelectorAll('.admin-class-modal label')].find((item) => item.textContent.includes('Professora'))
+    const input = label?.querySelector('input')
+    if (!label || !input || !professors.length || label.querySelector('select')) return undefined
+    const select = document.createElement('select')
+    select.required = true
+    select.innerHTML = '<option value="">Selecione uma professora</option>' + professors.map((professor) => `<option value="${String(professor.nome).replaceAll('"', '&quot;')}">${professor.nome}</option>`).join('')
+    select.value = form.professora
+    select.onchange = () => setField('professora', select.value)
+    input.replaceWith(select)
+    return undefined
+  }, [professors, form.professora])
   const submit = async (event) => {
     event.preventDefault()
     setSaving(true)
@@ -784,6 +902,43 @@ function ClassModal({ turma, onClose, onSaved }) {
     onSaved()
   }
   return <div className="admin-class-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className="admin-class-modal" role="dialog" aria-modal="true" aria-labelledby="class-modal-title" onMouseDown={(event) => event.stopPropagation()}><button className="admin-class-modal__close" type="button" onClick={onClose} aria-label="Fechar"><Icon name="close" /></button><h2 id="class-modal-title">{turma ? 'Editar turma' : 'Cadastrar turma'}</h2><p>Preencha os dados da turma e salve para disponibilizá-la nas matrículas.</p><form onSubmit={submit}><div className="admin-class-form-grid"><Field label="Nome da turma" required value={form.nome} onChange={(value) => setField('nome', value)} className="wide" /><label className="admin-enrollment-modal__field"><span>Modalidade<b>*</b></span><select value={form.modalidade} onChange={(event) => setField('modalidade', event.target.value)} required><option value="">Selecione uma modalidade</option>{modalities.map((modality) => <option key={modality} value={modality}>{modality}</option>)}</select></label><Field label="Professora" required value={form.professora} onChange={(value) => setField('professora', value)} /><label className="admin-enrollment-modal__field"><span>Dia da semana<b>*</b></span><select value={form.dia} onChange={(event) => setField('dia', event.target.value)}>{['segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'].map((day) => <option key={day}>{day}</option>)}</select></label><Field label="Horário" type="time" required value={form.horario} onChange={(value) => setField('horario', value)} /><Field label="Capacidade" type="number" required value={form.capacidade} onChange={(value) => setField('capacidade', value)} /><label className="admin-enrollment-modal__field"><span>Status</span><select value={form.status} onChange={(event) => setField('status', event.target.value)}><option value="ativo">Ativa</option><option value="inativo">Inativa</option></select></label></div>{error && <p className="admin-class-modal__error" role="alert">{error}</p>}<footer><button type="button" onClick={onClose}>Cancelar</button><button className="is-primary" type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar turma'}</button></footer></form></section></div>
+}
+
+function ClassModalFixed({ turma, onClose, onSaved }) {
+  const [form, setForm] = useState({ nome: turma?.nome || '', modalidade: turma?.modalidade || '', professora: turma?.professora || '', dia: turma?.dia || 'segunda-feira', horario: String(turma?.horario || '').slice(0, 5), capacidade: turma?.capacidade || 20, status: turma?.status || 'ativo' })
+  const [modalities, setModalities] = useState(['Ballet clássico', 'Jazz', 'Sapateado'])
+  const [professors, setProfessors] = useState([])
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const setField = (field, value) => setForm((current) => ({ ...current, [field]: value }))
+
+  useEffect(() => {
+    let active = true
+    Promise.all([
+      supabase.rpc('listar_turmas_admin'),
+      supabase.rpc('admin_listagem', { p_modulo: 'professores', p_busca: '', p_filtro: 'ativos', p_inicio: null, p_fim: null, p_turma: null, p_pagina: 0 }),
+    ]).then(([classes, teachers]) => {
+      if (!active) return
+      const classModalities = Array.isArray(classes.data) ? classes.data.map((item) => item.modalidade).filter(Boolean) : []
+      const teacherRows = teachers.data?.registros || []
+      setModalities((current) => [...new Set([...current, ...classModalities, turma?.modalidade].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')))
+      setProfessors([...new Map([...teacherRows.map((item) => ({ nome: item.nome })), turma?.professora ? { nome: turma.professora } : null].filter((item) => item?.nome).map((item) => [item.nome, item])).values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')))
+    }).catch(() => {
+      if (turma?.professora) setProfessors([{ nome: turma.professora }])
+    })
+    return () => { active = false }
+  }, [turma])
+
+  const submit = async (event) => {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+    const { error: requestError } = await supabase.rpc('salvar_turma_admin', { p_id_turma: turma?.id || null, p_nome: form.nome, p_modalidade: form.modalidade, p_professora: form.professora, p_dia_semana: form.dia, p_horario: form.horario || null, p_capacidade: Number(form.capacidade), p_status: form.status })
+    if (requestError) { setError(requestError.message || 'Não foi possível salvar a turma.'); setSaving(false); return }
+    onSaved()
+  }
+
+  return <div className="admin-class-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className="admin-class-modal" role="dialog" aria-modal="true" aria-labelledby="class-modal-fixed-title" onMouseDown={(event) => event.stopPropagation()}><button className="admin-class-modal__close" type="button" onClick={onClose} aria-label="Fechar"><Icon name="close" /></button><h2 id="class-modal-fixed-title">{turma ? 'Editar turma' : 'Cadastrar turma'}</h2><p>Preencha os dados da turma e salve para disponibilizá-la nas matrículas.</p><form onSubmit={submit}><div className="admin-class-form-grid"><Field label="Nome da turma" required value={form.nome} onChange={(value) => setField('nome', value)} className="wide" /><label className="admin-enrollment-modal__field"><span>Modalidade<b>*</b></span><div><select value={form.modalidade} onChange={(event) => setField('modalidade', event.target.value)} required><option value="">Selecione uma modalidade</option>{modalities.map((modality) => <option key={modality} value={modality}>{modality}</option>)}</select></div></label><label className="admin-enrollment-modal__field"><span>Professora<b>*</b></span><div><select value={form.professora} onChange={(event) => setField('professora', event.target.value)} required><option value="">Selecione uma professora</option>{professors.map((professor) => <option key={professor.nome} value={professor.nome}>{professor.nome}</option>)}</select></div></label><label className="admin-enrollment-modal__field"><span>Dia da semana<b>*</b></span><div><select value={form.dia} onChange={(event) => setField('dia', event.target.value)}>{['segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'].map((day) => <option key={day}>{day}</option>)}</select></div></label><Field label="Horário" type="time" required value={form.horario} onChange={(value) => setField('horario', value)} /><Field label="Capacidade" type="number" required value={form.capacidade} onChange={(value) => setField('capacidade', value)} /><label className="admin-enrollment-modal__field"><span>Status</span><div><select value={form.status} onChange={(event) => setField('status', event.target.value)}><option value="ativo">Ativa</option><option value="inativo">Inativa</option></select></div></label></div>{error && <p className="admin-class-modal__error" role="alert">{error}</p>}<footer><button type="button" onClick={onClose}>Cancelar</button><button className="is-primary" type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar turma'}</button></footer></form></section></div>
 }
 
 function FinanceiroView({ data, list, setList, records, loading, error, refresh, openView }) {
@@ -1099,12 +1254,20 @@ function NotificationsView({ data, records, loading, error, refresh, openView, o
   </section>
 }
 
+function SearchAreasView({ query, openView }) {
+  const normalized = String(query || '').trim().toLocaleLowerCase('pt-BR')
+  const areas = searchAreas.filter(([, label]) => !normalized || label.toLocaleLowerCase('pt-BR').includes(normalized))
+  return <section className="admin-records admin-search-only"><div className="admin-records-heading"><div><button className="admin-back" onClick={() => openView('dashboard')}>← Visão geral</button><h2>Áreas do painel</h2></div></div><section className="admin-search-areas" aria-label="Áreas administrativas"><header><div><h3>Pesquisar áreas</h3><p>Escolha uma área para abrir sua gestão.</p></div><span>{areas.length} encontradas</span></header><div>{areas.map(([module, label]) => <button type="button" key={module} onClick={() => openView(module)}>{label}<Icon name="arrow" /></button>)}{!areas.length && <p>Nenhuma área corresponde à busca.</p>}</div></section></section>
+}
 function RecordsView({ view, list, setList, data, loading, error, refresh, openView, onSelect, turmas, classId, setClassId, range, now }) {
   const options = filterOptions(view)
   const pageCount = Math.ceil((data?.total || 0) / 25)
   const change = (field, value) => setList((current) => ({ ...current, [field]: value, pagina: 0 }))
+  const searchText = String(list.busca || '').trim().toLocaleLowerCase('pt-BR')
+  const matchingAreas = view === 'busca' ? searchAreas.filter(([, label]) => !searchText || label.toLocaleLowerCase('pt-BR').includes(searchText)) : []
   return <section className="admin-records" aria-busy={loading}>
     <div className="admin-records-heading"><div><button className="admin-back" onClick={() => openView('dashboard')}>← Visão geral</button><h2>{moduleNames[view]}</h2></div><button className="admin-action" onClick={refresh}>Atualizar</button></div>
+    {view === 'busca' && <section className="admin-search-areas" aria-label="Áreas administrativas encontradas"><header><div><h3>Áreas do painel</h3><p>Acesse diretamente uma área administrativa.</p></div><span>{matchingAreas.length} áreas</span></header><div>{matchingAreas.map(([module, label]) => <button type="button" key={module} onClick={() => openView(module)}>{label}<Icon name="arrow" /></button>)}{!matchingAreas.length && <p>Nenhuma área corresponde à busca.</p>}</div></section>}
     <div className="admin-list-filters">
       <label>Buscar<input aria-label="Buscar nesta listagem" placeholder="Nome, turma ou status" value={list.busca} onChange={(event) => change('busca', event.target.value)} /></label>
       {options && <label>Status<select aria-label="Filtrar status" value={list.filtro} onChange={(event) => change('filtro', event.target.value)}>{options.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}
@@ -1160,7 +1323,7 @@ function AdminSettingsWorkspace({ data, openView }) {
     setLoading(true)
     const request = tab === 'usuarios'
       ? supabase.rpc('admin_listar_usuarios_admin')
-      : supabase.from('produto').select('id_produto,nome,preco,estoque,status,id_categoria,tamanhos_disponiveis,categoria_produto(nome),imagem_produto(caminho,principal,ordem)').order('nome').limit(50)
+      : supabase.from('produto').select('id_produto,nome,preco,estoque,estoque_minimo,status,id_categoria,tamanhos_disponiveis,categoria_produto(nome),imagem_produto(caminho,principal,ordem)').order('nome').limit(50)
     request.then(({ data: rows }) => {
       if (!active) return
       if (tab === 'usuarios') setUsers(rows || [])
@@ -1204,7 +1367,7 @@ function AdminSettingsWorkspace({ data, openView }) {
     <div className="admin-settings-tabs"><button className={tab === 'configuracoes' ? 'is-active' : ''} type="button" onClick={() => setTab('configuracoes')}>Todos</button><button className={tab === 'usuarios' ? 'is-active' : ''} type="button" onClick={() => setTab('usuarios')}>Usuários</button><button className={tab === 'produtos' ? 'is-active' : ''} type="button" onClick={() => setTab('produtos')}>Loja</button></div>
     {tab === 'configuracoes' && <><div className="admin-settings-banner"><div><strong>Configurações do Sistema</strong><p>Ajuste preferências e controles importantes para o funcionamento do programa do Studio.</p></div><span><Icon name="settings" /></span></div><form className="admin-settings-form" onSubmit={saveSettings}><h3>Informações do Studio</h3><div className="admin-settings-fields"><label>Nome do Studio<input value={settingsForm.nome} onChange={(event) => setSettingsForm((current) => ({ ...current, nome: event.target.value }))} /></label><label>Telefone/WhatsApp<input value={settingsForm.telefone} onChange={(event) => setSettingsForm((current) => ({ ...current, telefone: event.target.value }))} /></label><label>E-mail<input value={settingsForm.email} onChange={(event) => setSettingsForm((current) => ({ ...current, email: event.target.value }))} /></label><label>Endereço<input placeholder="Rua, número e cidade" /></label></div><h3>Preferências do sistema</h3><div className="admin-settings-preferences"><label><span>Notificações automáticas</span><input type="checkbox" defaultChecked /></label><label><span>Lembretes de mensalidade</span><input type="checkbox" defaultChecked /></label><label><span>Aulas em dia</span><input type="checkbox" defaultChecked /></label></div><div className="admin-settings-actions"><button type="button" onClick={() => setSettingsForm({ nome: data?.usuario?.nome || '', telefone: data?.usuario?.telefone || '', email: data?.usuario?.email || '' })}>Cancelar</button><button type="submit">{saved ? 'Salvo' : 'Salvar alterações'}</button></div></form></>}
     {tab === 'usuarios' && <section className="admin-settings-table"><header><div><h3>Usuários e permissões</h3><p>Gerencie o acesso das pessoas ao sistema.</p></div><button type="button">+ Novo usuário</button></header><div className="admin-settings-table__filters"><input placeholder="Buscar usuário" /><select><option>Todos os perfis</option><option>Administrador</option><option>Professor</option><option>Aluno</option></select></div>{loading ? <StateMessage title="Carregando usuários..." loading /> : <table><thead><tr><th>Usuário</th><th>Perfil</th><th>Acesso</th><th>Status</th><th>Ação</th></tr></thead><tbody>{users.map((user) => <tr key={user.id_usuario}><td><strong>{user.nome || 'Usuário'}</strong><small>{user.email || '—'}</small></td><td>Administrador</td><td>Completo</td><td><span className="admin-settings-status">{user.status || 'Ativo'}</span></td><td><button type="button">Editar</button></td></tr>)}</tbody></table>}</section>}
-    {tab === 'produtos' && <section className="admin-settings-table"><header><div><h3>Estoque e produtos</h3><p>Cadastre produtos e acompanhe as quantidades disponíveis e o valor da loja.</p></div><button type="button" onClick={() => setProductModal(true)}>+ Cadastrar novo produto</button></header><div className="admin-settings-kpis"><article><strong>{products.length}</strong><span>Produtos cadastrados</span></article><article><strong>{products.filter((product) => Number(product.estoque) <= 5).length}</strong><span>Estoque baixo</span></article><article><strong>{money(products.reduce((total, product) => total + Number(product.preco || 0), 0))}</strong><span>Valor dos produtos</span></article></div><div className="admin-settings-table__filters"><input placeholder="Pesquisar produto" /><select><option>Todas as categorias</option></select><select><option>Todos os status</option></select><button type="button">Filtrar</button></div>{loading ? <StateMessage title="Carregando produtos..." loading /> : <table><thead><tr><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Preço</th><th>Status</th><th>Ação</th></tr></thead><tbody>{products.map((product) => <tr key={product.id_produto}><td><strong>{product.nome}</strong></td><td>—</td><td>{product.estoque ?? 0}</td><td>{money(product.preco)}</td><td><span className="admin-settings-status">{product.status || 'Ativo'}</span></td><td><button type="button">Editar</button></td></tr>)}</tbody></table>}</section>}
+    {tab === 'produtos' && <section className="admin-settings-table"><header><div><h3>Estoque e produtos</h3><p>Cadastre produtos e acompanhe as quantidades disponíveis e o valor da loja.</p></div><button type="button" onClick={() => setProductModal(true)}>+ Cadastrar novo produto</button></header><div className="admin-settings-kpis"><article><strong>{products.length}</strong><span>Produtos cadastrados</span></article><article><strong>{products.reduce((total, product) => total + Math.max(0, Number(product.estoque) || 0), 0)}</strong><span>Itens em estoque</span></article><article><strong>{money(products.reduce((total, product) => total + Number(product.preco || 0), 0))}</strong><span>Valor dos produtos</span></article></div><div className="admin-settings-table__filters"><input placeholder="Pesquisar produto" /><select><option>Todas as categorias</option></select><select><option>Todos os status</option></select><button type="button">Filtrar</button></div>{loading ? <StateMessage title="Carregando produtos..." loading /> : <table><thead><tr><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Preço</th><th>Status</th><th>Ação</th></tr></thead><tbody>{products.map((product) => <tr key={product.id_produto}><td><strong>{product.nome}</strong></td><td>—</td><td>{product.estoque ?? 0}</td><td>{money(product.preco)}</td><td><span className="admin-settings-status">{product.status || 'Ativo'}</span></td><td><button type="button">Editar</button></td></tr>)}</tbody></table>}</section>}
     {productModal && <div className="admin-settings-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setProductModal(false)}><form className="admin-settings-product-modal" onSubmit={(event) => { event.preventDefault(); setProductModal(false) }}><button className="admin-settings-modal__close" type="button" onClick={() => setProductModal(false)}>×</button><h3>Cadastrar Produto</h3><p>Preencha as informações do novo produto.</p><label>Nome do produto<input required placeholder="Ex.: Collant rosa" /></label><div><label>Categoria<select><option>Vestuário</option><option>Acessórios</option><option>Calçados</option></select></label><label>Preço<input type="number" step="0.01" placeholder="R$ 0,00" /></label></div><div><label>Estoque<input type="number" placeholder="0" /></label><label>Estoque mínimo<input type="number" placeholder="0" /></label></div><button className="admin-settings-product-modal__submit" type="submit">Cadastrar produto</button></form></div>}
   </section>
 }
@@ -1301,7 +1464,7 @@ function AdminProductsView({ tab, setTab, products, setProducts, loading }) {
   const openCreate = () => { setError(''); setForm({ id_produto: null, nome: '', descricao: '', preco: '', estoque: '', estoque_minimo: '', id_categoria: categories[0]?.id_categoria || '', status: 'Ativo', tamanhos_disponiveis: 'Único', imagem: '' }); setModal('create') }
   const openEdit = (product) => { setError(''); setForm({ id_produto: product.id_produto, nome: product.nome || '', descricao: product.descricao || '', preco: product.preco ?? '', estoque: product.estoque ?? '', estoque_minimo: product.estoque_minimo ?? '', id_categoria: product.id_categoria || '', status: product.status || 'Ativo', tamanhos_disponiveis: Array.isArray(product.tamanhos_disponiveis) ? product.tamanhos_disponiveis.join(', ') : product.tamanhos_disponiveis || 'Único', imagem: product.imagem_produto?.slice().sort((first, second) => Number(second.principal) - Number(first.principal) || Number(first.ordem || 0) - Number(second.ordem || 0))[0]?.caminho || '' }); setModal('edit') }
   const chooseImage = (event) => { const file = event.target.files?.[0]; if (!file) return; if (!file.type.startsWith('image/')) { setError('Selecione um arquivo de imagem válido.'); return } if (file.size > 5 * 1024 * 1024) { setError('A imagem deve ter no máximo 5 MB.'); return } const reader = new FileReader(); reader.onload = () => setForm((current) => ({ ...current, imagem: String(reader.result || '') })); reader.readAsDataURL(file) }
-  const saveProduct = async (event) => { event.preventDefault(); setSaving(true); setError(''); const payload = { nome: form.nome.trim(), descricao: form.descricao.trim() || null, preco: Number(form.preco || 0), estoque: Number(form.estoque || 0), estoque_minimo: Number(form.estoque_minimo || 0), id_categoria: form.id_categoria ? Number(form.id_categoria) : null, status: form.status, tamanhos_disponiveis: form.tamanhos_disponiveis.split(',').map((item) => item.trim()).filter(Boolean) || ['Único'] }; let productId = form.id_produto; let requestError; if (modal === 'create') { const result = await supabase.from('produto').insert(payload).select('id_produto').single(); productId = result.data?.id_produto; requestError = result.error } else { requestError = (await supabase.from('produto').update(payload).eq('id_produto', form.id_produto)).error } if (requestError || !productId) { setError(requestError?.message || 'Não foi possível salvar o produto.'); setSaving(false); return } if (form.imagem) { await supabase.from('imagem_produto').delete().eq('id_produto', productId).eq('principal', true); const imageResult = await supabase.from('imagem_produto').insert({ id_produto: productId, caminho: form.imagem, principal: true, ordem: 0 }); if (imageResult.error) { setError(imageResult.error.message || 'Produto salvo, mas não foi possível salvar a imagem.'); setSaving(false); return } } await reloadProducts(); setModal(null); setSaving(false) }
+  const saveProduct = async (event) => { event.preventDefault(); setSaving(true); setError(''); const payload = { nome: form.nome.trim(), descricao: form.descricao.trim() || null, preco: Number(form.preco || 0), estoque: Number(form.estoque || 0), estoque_minimo: Number(form.estoque_minimo || 0), id_categoria: form.id_categoria ? Number(form.id_categoria) : null, status: form.status, tamanhos_disponiveis: form.tamanhos_disponiveis.split(',').map((item) => item.trim()).filter(Boolean) || ['Único'] }; let productId = form.id_produto; let requestError; if (modal === 'create') { const result = await supabase.from('produto').insert(payload).select('id_produto').single(); productId = result.data?.id_produto; requestError = result.error } else { requestError = (await supabase.from('produto').update(payload).eq('id_produto', form.id_produto)).error } if (requestError || !productId) { setError(requestError?.message || 'Não foi possível salvar o produto.'); setSaving(false); return } if (form.imagem) { await supabase.from('imagem_produto').delete().eq('id_produto', productId).eq('principal', true); const imageResult = await supabase.from('imagem_produto').insert({ id_produto: productId, caminho: form.imagem, principal: true, ordem: 1 }); if (imageResult.error) { setError(imageResult.error.message || 'Produto salvo, mas não foi possível salvar a imagem.'); setSaving(false); return } } await reloadProducts(); setModal(null); setSaving(false) }
   const deleteProduct = async (product) => { if (!window.confirm(`Apagar o produto "${product.nome}"?`)) return; const { error: requestError } = await supabase.from('produto').delete().eq('id_produto', product.id_produto); if (requestError) { window.alert(requestError.message || 'Não foi possível apagar o produto.'); return } await reloadProducts() }
   useEffect(() => { supabase.from('categoria_produto').select('id_categoria,nome').order('nome').then(({ data }) => setCategories(data || [])) }, [])
   useEffect(() => {
@@ -1319,17 +1482,74 @@ function AdminProductsView({ tab, setTab, products, setProducts, loading }) {
     <header className="admin-settings-heading"><div><h2>Configurações</h2></div><div className="admin-settings-heading__actions"><button type="button" aria-label="Pesquisar"><Icon name="search" /></button><button type="button" aria-label="Notificações"><Icon name="bell" /></button></div></header>
     <div className="admin-settings-tabs"><button className={tab === 'configuracoes' ? 'is-active' : ''} type="button" onClick={() => setTab('configuracoes')}>Todos</button><button className={tab === 'usuarios' ? 'is-active' : ''} type="button" onClick={() => setTab('usuarios')}>Usuários</button><button className={tab === 'produtos' ? 'is-active' : ''} type="button" onClick={() => setTab('produtos')}>Loja</button></div>
     <div className="admin-products-banner" aria-label="Estoque e produtos" />
-    <div className="admin-products-kpis"><article><strong>{products.length}</strong><span>Produtos cadastrados</span></article><article><strong>{products.filter((product) => Number(product.estoque) <= 5).length}</strong><span>Estoque baixo</span></article><article><strong>{money(totalValue)}</strong><span>Valor em estoque</span></article></div>
+    <div className="admin-products-kpis"><article><strong>{products.length}</strong><span>Produtos cadastrados</span></article><article><strong>{products.reduce((total, product) => total + Math.max(0, Number(product.estoque) || 0), 0)}</strong><span>Itens em estoque</span></article><article><strong>{money(totalValue)}</strong><span>Valor em estoque</span></article></div>
     <div className="admin-products-toolbar"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar produto..." /><select><option>Categoria</option><option>Vestuário</option><option>Calçados</option></select><select><option>Tamanho</option></select><select><option>Status</option></select><select><option>Estoque</option></select><button type="button">Ordenar⌄</button></div>
     {loading ? <StateMessage title="Carregando produtos..." loading /> : <table className="admin-products-table"><thead><tr><th>Produto</th><th>Categoria</th><th>Tamanho</th><th>Estoque</th><th>Preço</th><th>Status</th><th>Ações</th></tr></thead><tbody>{filteredProducts.map((product) => { const category = Array.isArray(product.categoria_produto) ? product.categoria_produto[0]?.nome : product.categoria_produto?.nome; const sizes = Array.isArray(product.tamanhos_disponiveis) ? product.tamanhos_disponiveis.join(', ') : product.tamanhos_disponiveis || 'Único'; const available = Number(product.estoque || 0) > 0 && !/inativ|indispon/i.test(product.status || ''); return <tr key={product.id_produto}><td><span className="admin-products-product"><img src={imageFor(product)} alt="" /><strong>{product.nome || 'Produto'}</strong></span></td><td>{category || '—'}</td><td>{sizes}</td><td>{product.estoque ?? 0}</td><td>{money(product.preco)}</td><td><em className={available ? 'is-available' : 'is-unavailable'}>● {available ? 'Disponível' : 'Indisponível'}</em></td><td><div className="admin-products-actions"><button type="button" onClick={() => openEdit(product)}>Editar</button><button type="button" onClick={() => deleteProduct(product)}>Apagar</button></div></td></tr> })}</tbody></table>}
     <button className="admin-products-new" type="button" onClick={openCreate}>CADASTRAR NOVO PRODUTO +</button>
     <section className="admin-products-orders"><h3>Pedidos da Loja</h3><div className="admin-products-order-columns">{['Novos pedidos', 'Em preparação', 'Pronto para retirada', 'Entregues'].map((title, index) => <article key={title}><header><strong>{title}</strong><span>{index + 1}</span></header><div className="admin-products-order-card"><b>{index === 0 ? '#2026-014' : '#2026-011'}</b><span>{index === 0 ? 'Pedido recebido' : 'Pedido em acompanhamento'}</span><small>Hoje, 14:30</small><em>{index === 3 ? 'Concluído' : 'Ver pedido'}</em></div><div className="admin-products-order-card"><b>Pedido #{String(index + 8).padStart(3, '0')}</b><span>Produtos do Studio</span><small>08/10/2026</small></div></article>)}</div></section>
-    {modal && <div className="admin-settings-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setModal(null)}><form className="admin-settings-product-modal" onSubmit={saveProduct}><button className="admin-settings-modal__close" type="button" onClick={() => setModal(null)}>×</button><h3>{modal === 'create' ? 'Cadastrar produto' : 'Editar produto'}</h3><p>Atualize os dados que serão exibidos na loja.</p><label>Nome do produto<input required value={form.nome} onChange={(event) => setForm((current) => ({ ...current, nome: event.target.value }))} /></label><label>Descrição<input value={form.descricao} onChange={(event) => setForm((current) => ({ ...current, descricao: event.target.value }))} /></label><label>Imagem do produto<input type="file" accept="image/*" onChange={chooseImage} /><small className="admin-product-image-hint">PNG, JPG ou WEBP — máximo 5 MB</small>{form.imagem && <img className="admin-product-image-preview" src={form.imagem} alt="Prévia do produto" />}</label><div><label>Categoria<select value={form.id_categoria} onChange={(event) => setForm((current) => ({ ...current, id_categoria: event.target.value }))}><option value="">Sem categoria</option>{categories.map((category) => <option value={category.id_categoria} key={category.id_categoria}>{category.nome}</option>)}</select></label><label>Status<select value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}><option>Ativo</option><option>Inativo</option></select></label></div><div><label>Preço<input required min="0" step="0.01" type="number" value={form.preco} onChange={(event) => setForm((current) => ({ ...current, preco: event.target.value }))} /></label><label>Estoque<input required min="0" type="number" value={form.estoque} onChange={(event) => setForm((current) => ({ ...current, estoque: event.target.value }))} /></label></div><div><label>Estoque mínimo<input min="0" type="number" value={form.estoque_minimo} onChange={(event) => setForm((current) => ({ ...current, estoque_minimo: event.target.value }))} /></label><label>Tamanhos<input value={form.tamanhos_disponiveis} onChange={(event) => setForm((current) => ({ ...current, tamanhos_disponiveis: event.target.value }))} placeholder="P, M, G" /></label></div>{error && <p className="admin-settings-error">{error}</p>}<button className="admin-settings-product-modal__submit" type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar produto'}</button></form></div>}
+    {modal && <ProductModal modal={modal} setModal={setModal} form={form} setForm={setForm} categories={categories} chooseImage={chooseImage} error={error} saving={saving} saveProduct={saveProduct} />}
   </section>
 }
 
+function ProductModal({ modal, setModal, form, setForm, categories, chooseImage, error, saving, saveProduct }) {
+  const [controlStock, setControlStock] = useState(true)
+  const [studentsOnly, setStudentsOnly] = useState(false)
+  const [featured, setFeatured] = useState(false)
+  const [addingSize, setAddingSize] = useState(false)
+  const [sizeDraft, setSizeDraft] = useState('')
+  const sizes = String(form.tamanhos_disponiveis || '').split(',').map((size) => size.trim()).filter((size) => size && size.toLowerCase() !== 'único')
+  const toggleSize = (size) => setForm((current) => ({ ...current, tamanhos_disponiveis: sizes.includes(size) ? sizes.filter((item) => item !== size).join(', ') : [...sizes, size].join(', ') }))
+  const addSize = () => { const nextSize = sizeDraft.trim(); if (!nextSize || sizes.includes(nextSize)) return; setForm((current) => ({ ...current, tamanhos_disponiveis: [...sizes, nextSize].join(', ') })); setSizeDraft(''); setAddingSize(false) }
+  useEffect(() => {
+    const button = document.querySelector('.admin-product-create-modal .admin-product-add-size')
+    if (!button) return undefined
+    const handleAddSize = () => { const nextSize = window.prompt('Digite o novo tamanho:'); if (nextSize?.trim()) { const value = nextSize.trim(); if (!sizes.includes(value)) setForm((current) => ({ ...current, tamanhos_disponiveis: [...sizes, value].join(', ') })) } }
+    button.addEventListener('click', handleAddSize)
+    return () => button.removeEventListener('click', handleAddSize)
+  }, [sizes.join(',')])
+  useEffect(() => {
+    const container = document.querySelector('.admin-product-create-modal .admin-product-size-chips')
+    if (!container) return undefined
+    const extraSizes = ['29', '30', '31', '32', '33', '34', '35', '36', '37', '38', '39', '40', 'PP', 'P', 'M', 'G', 'GG', 'XG']
+    extraSizes.forEach((size) => {
+      if (container.querySelector(`[data-extra-size="${size}"]`)) return
+      const chip = document.createElement('button')
+      chip.type = 'button'
+      chip.dataset.extraSize = size
+      chip.textContent = size
+      chip.className = sizes.includes(size) ? 'is-selected' : ''
+      chip.addEventListener('click', () => setForm((current) => ({ ...current, tamanhos_disponiveis: sizes.includes(size) ? sizes.filter((item) => item !== size).join(', ') : [...sizes, size].join(', ') })))
+      container.appendChild(chip)
+    })
+    if (!container.querySelector('[data-letter-size-label]')) {
+      const firstLetter = container.querySelector('[data-extra-size="PP"]')
+      if (firstLetter) {
+        const label = document.createElement('span')
+        label.dataset.letterSizeLabel = 'true'
+        label.textContent = 'Tamanhos em letras'
+        label.className = 'admin-product-letter-size-label'
+        container.insertBefore(label, firstLetter)
+      }
+    }
+  }, [sizes.join(',')])
+  useEffect(() => {
+    setForm((current) => ({ ...current, status: undefined }))
+  }, [])
+  return <div className="admin-settings-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setModal(null)}><form className="admin-settings-product-modal admin-product-create-modal" onSubmit={saveProduct}>
+    <button className="admin-settings-modal__close" type="button" onClick={() => setModal(null)} aria-label="Fechar">×</button><h3>{modal === 'create' ? 'Cadastrar Produto' : 'Editar Produto'}</h3>
+    <div className="admin-product-modal-grid">
+      <section className="admin-product-modal-column"><h4>1. INFORMAÇÕES BÁSICAS</h4><label>Nome Completo<input required value={form.nome} placeholder="Informe o nome do produto" onChange={(event) => setForm((current) => ({ ...current, nome: event.target.value }))} /></label><label>Descrição<textarea value={form.descricao} placeholder="Descreva o produto aqui..." onChange={(event) => setForm((current) => ({ ...current, descricao: event.target.value }))} /></label><label>Categoria<select value={form.id_categoria} onChange={(event) => setForm((current) => ({ ...current, id_categoria: event.target.value }))}><option value="">Sem categoria</option>{categories.map((category) => <option value={category.id_categoria} key={category.id_categoria}>{category.nome}</option>)}</select></label></section>
+      <section className="admin-product-modal-column"><h4>2. PREÇO E ESTOQUE</h4><label>Preço de venda:<input required min="0" step="0.01" type="number" value={form.preco} placeholder="R$ 0,00" onChange={(event) => setForm((current) => ({ ...current, preco: event.target.value }))} /></label><label>Estoque<input required min="0" type="number" value={form.estoque} placeholder="0" onChange={(event) => setForm((current) => ({ ...current, estoque: event.target.value }))} /></label><label>Controlar estoque <input className="admin-product-toggle" type="checkbox" checked={controlStock} onChange={(event) => setControlStock(event.target.checked)} /></label><small>A quantidade dos produtos em estoque será atualizada automaticamente após os pedidos processados.</small><h4>3. CONFIGURAÇÕES</h4><label>Permitir compra com o estoque esgotado <input className="admin-product-toggle" type="checkbox" /></label><label>Disponível somente para alunos matriculados <input className="admin-product-toggle" type="checkbox" checked={studentsOnly} onChange={(event) => setStudentsOnly(event.target.checked)} /></label><label>Produto em destaque <input className="admin-product-toggle" type="checkbox" checked={featured} onChange={(event) => setFeatured(event.target.checked)} /></label></section>
+      <section className="admin-product-modal-column"><h4>4. VARIAÇÕES DO PRODUTO</h4><label>Tamanhos:</label><div className="admin-product-size-chips">{['24', '25', '26', '27', '28'].map((size) => <button type="button" key={size} className={sizes.includes(size) ? 'is-selected' : ''} onClick={() => toggleSize(size)}>{size}</button>)}</div><button type="button" className="admin-product-add-size">Adicionar tamanho +</button><div className="admin-product-variants-table"><span>Tamanho</span><span>Estoque</span><span>Valor</span>{sizes.slice(0, 4).map((size) => <React.Fragment key={size}><b>{size}</b><input aria-label={'Estoque tamanho ' + size} type="number" min="0" value={form.estoque} onChange={(event) => setForm((current) => ({ ...current, estoque: event.target.value }))} /><em>R$ {Number(form.preco || 0).toFixed(2).replace('.', ',')}</em></React.Fragment>)}</div><label className="admin-product-image-upload">Imagem do produto<input type="file" accept="image/*" onChange={chooseImage} /><span>{form.imagem ? 'Imagem selecionada' : 'Adicionar imagem do produto'}</span><small>JPG, PNG ou WEBP</small></label></section>
+    </div>
+    {error && <p className="admin-settings-error">{error}</p>}<button className="admin-settings-product-modal__submit" type="submit" disabled={saving}>{saving ? 'Salvando...' : 'CADASTRAR'}</button>
+  </form></div>
+}
+
 function ProfileView({ data, settings, openView }) {
-  return <section className="admin-records"><button className="admin-back" onClick={() => openView('dashboard')}>← Visão geral</button><h2>{settings ? 'Configurações da conta' : 'Meu perfil'}</h2><dl className="admin-profile-details">{[['nome', 'Nome'], ['email', 'E-mail'], ['telefone', 'Telefone'], ['perfil', 'Perfil de acesso']].map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{data?.[key] || '—'}</dd></div>)}</dl>{settings && <div className="admin-account-links"><button onClick={() => openView('professores')}>Professores</button><button onClick={() => openView('matriculas')}>Matrículas</button><button onClick={() => openView('produtos')}>Produtos</button><button onClick={() => openView('pedidos')}>Pedidos da loja</button></div>}</section>
+  const name = data?.nome || 'Administrador'
+  const initials = name.split(/\s+/).map((part) => part[0]).slice(0, 2).join('').toUpperCase()
+  return <section className="admin-profile-page"><button className="admin-back" onClick={() => openView('dashboard')}>← Visão geral</button><header className="admin-profile-hero"><div className="admin-profile-avatar">{initials}</div><div><span className="admin-profile-eyebrow">Perfil administrativo</span><h2>{name}</h2><p>{data?.email || 'Acesso administrativo do Studio Keli Dalpian'}</p></div><span className="admin-profile-active">● Conta ativa</span></header><div className="admin-profile-content"><section className="admin-profile-panel"><header><div><span className="admin-profile-eyebrow">Informações da conta</span><h3>Dados pessoais</h3></div><button type="button" onClick={() => openView('configuracoes')}>Editar configurações</button></header><dl className="admin-profile-details">{[['nome', 'Nome completo'], ['email', 'E-mail'], ['telefone', 'Telefone'], ['perfil', 'Perfil de acesso']].map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{data?.[key] || 'Não informado'}</dd></div>)}</dl></section><aside className="admin-profile-panel admin-profile-access"><span className="admin-profile-eyebrow">Acesso rápido</span><h3>Gestão do Studio</h3><p>Entre diretamente nas áreas mais usadas do painel administrativo.</p><div className="admin-account-links"><button onClick={() => openView('alunos')}>Alunos</button><button onClick={() => openView('professores')}>Professores</button><button onClick={() => openView('matriculas')}>Matrículas</button><button onClick={() => openView('produtos')}>Produtos</button><button onClick={() => openView('financeiro')}>Financeiro</button><button onClick={() => openView('notificacoes')}>Notificações</button></div></aside></div><section className="admin-profile-security"><div><span className="admin-profile-security-icon">✓</span><div><h3>Segurança da conta</h3><p>Seu perfil tem acesso às ferramentas administrativas autorizadas.</p></div></div><button type="button" onClick={() => openView('configuracoes')}>Gerenciar conta</button></section></section>
 }
 function RecordDialog({ record, onClose, onRead }) {
   const dialogRef = useRef(null)
