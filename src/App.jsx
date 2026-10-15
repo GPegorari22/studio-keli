@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import bannerInicio from './assets/banner-inicio.png'
+import AOS from 'aos'
+import homeBanner20 from './assets/home-banner-20.png'
+import homeBanner21 from './assets/home-banner-21.png'
+import homeBanner22 from './assets/home-banner-22.png'
 import sapateado from './assets/sapateado.png'
 import jazz from './assets/jazz.png'
 import balletClassico from './assets/ballet-classico.png'
@@ -16,13 +19,36 @@ import separacaoPagina from './assets/separacao-pagina.png'
 import showEnrolados from './assets/show-enrolados.png'
 import showBrancaNeve from './assets/show-branca-neve.png'
 import showBelaFera from './assets/show-bela-fera.png'
+import showAliceBanner from './assets/show-alice-banner.png'
+import gallerySolo from './assets/bastidores-solo-figma.png'
+import galleryEnsaio from './assets/bastidores-ensaio-figma.png'
+import galleryBarra from './assets/bastidores-barra-figma.png'
+import galleryAula from './assets/bastidores-aula-figma.png'
+import galleryAulas from './assets/bastidores-aulas.png'
+import showBrancaPattern from './assets/show-branca-padrao.png'
+import showBrancaBanner from './assets/show-branca-banner.png'
+import showBrancaFlourish from './assets/show-branca-flourish.png'
+import showBrancaCharacter from './assets/show-branca-personagem.png'
+import showAlicePattern from './assets/show-alice-padrao.png'
+import showAliceFlourish from './assets/show-alice-flourish.png'
+import showAliceCharacter from './assets/show-alice-personagem.png'
+import showAliceCard from './assets/show-alice-card.png'
+import showBelaFeraBanner from './assets/show-bela-fera-banner.png'
+import showBelaFeraPattern from './assets/show-bela-fera-padrao.png'
+import showBelaFeraCharacter from './assets/show-bela-fera-personagem.png'
 import secaoEspetaculos from './assets/secao-espetaculos.png'
 import professoraGenerica from './assets/professora-generica.png'
 import './App.css'
 import inscricao from './assets/inscrição.png'
 import { supabase } from './lib/supabase.js'
 
-const navigation = ['Modalidades', 'Studio', 'Espetáculos', 'Loja']
+const navigation = ['Modalidades', 'Studio', 'Espetáculos']
+const homepageBanners = [
+  { image: homeBanner22, alt: 'Aulas de ballet para todas as idades e níveis' },
+  { image: homeBanner21, alt: 'A dança desenvolve disciplina, expressão e evolução' },
+  { image: homeBanner20, alt: 'Dançar é transformar movimento em história' },
+]
+const studioWhatsappUrl = 'https://wa.me/5516999999999'
 const modalities = [
   { name: 'Sapateado', image: sapateado, slug: 'sapateado' },
   { name: 'Ballet Clássico', image: balletClassico, slug: 'ballet-classico', featured: true },
@@ -49,9 +75,9 @@ const teacherDetails = {
 }
 
 const shows = [
-  { name: 'Enrolados', image: showEnrolados, slug: 'enrolados', year: '2022' },
   { name: 'Branca de Neve', image: showBrancaNeve, slug: 'branca-de-neve', featured: true, year: '2025' },
-  { name: 'Bela e a Fera', image: showBelaFera, slug: 'bela-e-a-fera', year: '2023' },
+  { name: 'Alice no País das Maravilhas', image: showAliceCard, slug: 'alice-no-pais-das-maravilhas', year: '2024' },
+  { name: 'Bela e a Fera', image: showEnrolados, slug: 'bela-e-a-fera', year: '2023' },
 ]
 
 const balletClassGroups = [
@@ -179,7 +205,11 @@ const formatPhoneNumber = (value) => {
 function App({ session }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [headerIsCompact, setHeaderIsCompact] = useState(false)
+  const [homeBannerIndex, setHomeBannerIndex] = useState(0)
   const [activeModalSlug, setActiveModalSlug] = useState(null)
+  const [showBrancaDetailOpen, setShowBrancaDetailOpen] = useState(false)
+  const [showAliceDetailOpen, setShowAliceDetailOpen] = useState(false)
+  const [showBelaFeraDetailOpen, setShowBelaFeraDetailOpen] = useState(false)
   const [openModalityClass, setOpenModalityClass] = useState(null)
   const modalRef = useRef(null)
   const [trialModalOpen, setTrialModalOpen] = useState(false)
@@ -236,6 +266,45 @@ function App({ session }) {
     updateHeaderState()
     window.addEventListener('scroll', updateHeaderState, { passive: true })
     return () => window.removeEventListener('scroll', updateHeaderState)
+  }, [])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setHomeBannerIndex((index) => (index + 1) % homepageBanners.length), 6000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    AOS.init({
+      once: true,
+      duration: 720,
+      easing: 'ease-out-cubic',
+      offset: 80,
+      disable: () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    })
+
+    const animatedSections = document.querySelectorAll(
+      '.home-page [data-aos], .home-page .modality, .home-page .teacher, .home-page .show, .home-page .gallery-photo',
+    )
+    animatedSections.forEach((element, index) => {
+      if (!element.dataset.aos) element.dataset.aos = 'fade-up'
+      element.style.setProperty('--aos-delay', `${Math.min(index * 70, 280)}ms`)
+      element.classList.add('aos-init')
+    })
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return
+        entry.target.classList.add('aos-animate')
+        observer.unobserve(entry.target)
+      })
+    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' })
+    animatedSections.forEach((element) => observer.observe(element))
+
+    const refreshAos = () => AOS.refresh()
+    window.addEventListener('resize', refreshAos)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', refreshAos)
+    }
   }, [])
 
   const openTrialModal = () => {
@@ -533,6 +602,18 @@ function App({ session }) {
     }
   }, [trialModalOpen, trialStep, selectedTrialModalitySearch])
 
+  if (showBrancaDetailOpen) {
+    return <BrancaDeNevePage onBack={() => setShowBrancaDetailOpen(false)} />
+  }
+
+  if (showAliceDetailOpen) {
+    return <AliceNoPaisDasMaravilhasPage onBack={() => setShowAliceDetailOpen(false)} />
+  }
+
+  if (showBelaFeraDetailOpen) {
+    return <BelaEFeraPage onBack={() => setShowBelaFeraDetailOpen(false)} />
+  }
+
   return (
     <main className="home-page">
       <header className={`site-header ${headerIsCompact ? 'is-compact' : ''}`}>
@@ -577,7 +658,12 @@ function App({ session }) {
 
       <section className="hero-section" aria-labelledby="home-title">
         <div className="hero-banner" id="inicio">
-          <img src={bannerInicio} alt="Dançar é transformar movimento em história" />
+          <div className="hero-carousel" key={homeBannerIndex}>
+            <img src={homepageBanners[homeBannerIndex].image} alt={homepageBanners[homeBannerIndex].alt} />
+          </div>
+          <button className="hero-carousel__arrow hero-carousel__arrow--previous" type="button" aria-label="Banner anterior" onClick={() => setHomeBannerIndex((index) => (index - 1 + homepageBanners.length) % homepageBanners.length)}><span aria-hidden="true">‹</span></button>
+          <button className="hero-carousel__arrow hero-carousel__arrow--next" type="button" aria-label="Próximo banner" onClick={() => setHomeBannerIndex((index) => (index + 1) % homepageBanners.length)}><span aria-hidden="true">›</span></button>
+          <div className="hero-carousel__dots" aria-label="Slides do banner">{homepageBanners.map((banner, index) => <button key={banner.alt} type="button" className={index === homeBannerIndex ? 'is-active' : ''} aria-label={`Ir para o banner ${index + 1}`} onClick={() => setHomeBannerIndex(index)} />)}</div>
         </div>
 
         <a className="scroll-indicator" href="#modalidades" aria-label="Ver modalidades">
@@ -591,6 +677,7 @@ function App({ session }) {
         className="modalities-section"
         id="modalidades"
         aria-labelledby="modalities-title"
+        data-aos="fade-up"
       >
         <div className="modalities-heading">
           <h1 id="modalities-title">Modalidades</h1>
@@ -671,7 +758,7 @@ function App({ session }) {
         </div>
       </section>
 
-      <section className="teachers-section" id="equipe" aria-labelledby="teachers-title">
+      <section className="teachers-section" id="equipe" aria-labelledby="teachers-title" data-aos="fade-up">
         <div className="teachers-inner">
           <div className="teachers-heading">
             <h2 id="teachers-title">PROFESSORAS</h2>
@@ -726,7 +813,7 @@ function App({ session }) {
         </div>
       </section>
       <img src={separacaoPagina} alt="" className="separacao-pagina" />
-      <section className="shows-section" id="espetaculos" aria-labelledby="shows-title">
+      <section className="shows-section" id="espetaculos" aria-labelledby="shows-title" data-aos="fade-up">
         <div className="shows-inner">
           <h2 id="shows-title">ESPETÁCULOS</h2>
           <p className="shows-lead">Quando a dança ganha <strong>palco</strong>.</p>
@@ -745,6 +832,23 @@ function App({ session }) {
                   key={show.slug}
                   href={`#${show.slug}`}
                   className={`show ${show.featured ? 'show--featured' : ''} show-${show.slug}`}
+                  onClick={(event) => {
+                    if (show.slug === 'branca-de-neve') {
+                      event.preventDefault()
+                      setShowBrancaDetailOpen(true)
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }
+                    if (show.slug === 'alice-no-pais-das-maravilhas') {
+                      event.preventDefault()
+                      setShowAliceDetailOpen(true)
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }
+                    if (show.slug === 'bela-e-a-fera') {
+                      event.preventDefault()
+                      setShowBelaFeraDetailOpen(true)
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }
+                  }}
                   aria-label={`Conheça ${show.name}`}>
                   <div className="show-card">
                       <div className="show-art">
@@ -767,7 +871,13 @@ function App({ session }) {
         </div>
       </section>
 
-      <section className="inscricao-section" id="inscricao" aria-labelledby="inscricao-title">
+      <section className="gallery-section" id="galeria" aria-label="Galeria do Studio" data-aos="fade-up">
+        <div className="gallery-grid">
+          {[gallerySolo, galleryAula, galleryBarra, galleryEnsaio, galleryAulas].map((image, index) => <figure className="gallery-photo" key={`${image}-${index}`}><img src={image} alt={`Momento do Studio Keli Dalpian ${index + 1}`} /></figure>)}
+        </div>
+      </section>
+
+      <section className="inscricao-section" id="inscricao" aria-labelledby="inscricao-title" data-aos="fade-up">
         <div className="inscricao-inner">
           <div className="inscricao-art" aria-hidden="true">
             <img src={inscricao} alt="Inscrição" />
@@ -793,7 +903,6 @@ function App({ session }) {
                 <div className="footer-col">
                   <a href="#studio">STUDIO →</a>
                   <a href="#equipe">EQUIPE →</a>
-                  <a href="#loja">LOJA →</a>
                 </div>
 
                 <div className="footer-col">
@@ -807,7 +916,7 @@ function App({ session }) {
                     <img className="social-img" src="https://cdn.jsdelivr.net/npm/simple-icons@v8/icons/instagram.svg" alt="Instagram" />
                     <span>Instagram</span>
                   </a>
-                  <a className="social-link" href="#" aria-label="Whatsapp">
+                  <a className="social-link" href={studioWhatsappUrl} target="_blank" rel="noreferrer" aria-label="Abrir WhatsApp do Studio Keli Dalpian em uma nova aba">
                     <img className="social-img" src="https://cdn.jsdelivr.net/npm/simple-icons@v8/icons/whatsapp.svg" alt="Whatsapp" />
                     <span>Whatsapp</span>
                   </a>
@@ -820,6 +929,17 @@ function App({ session }) {
           <p>Studio Keli Dalpian | © 2026</p>
         </div>
       </footer>
+
+      <a
+        className="whatsapp-float"
+        href={studioWhatsappUrl}
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Falar com o Studio Keli Dalpian pelo WhatsApp"
+      >
+        <img src="https://cdn.jsdelivr.net/npm/simple-icons@v8/icons/whatsapp.svg" alt="" aria-hidden="true" />
+        <span>Fale conosco</span>
+      </a>
 
       {trialModalOpen && (
         <div
@@ -1120,6 +1240,219 @@ function App({ session }) {
           </section>
         </div>
       )}
+    </main>
+  )
+}
+
+function StudioFooter({ onBack }) {
+  return (
+    <footer className="site-footer snow-site-footer" aria-label="Rodapé do Studio Keli Dalpian">
+      <div className="footer-top">
+        <div className="footer-logo">
+          <img src={logoBranca} alt="Keli Dalpian" />
+        </div>
+        <div className="footer-inner">
+          <p className="footer-tagline">Dança • Arte • Movimento</p>
+          <div className="footer-grid">
+            <div className="footer-col">
+              <a href="#studio" onClick={onBack}>STUDIO →</a>
+              <a href="#equipe" onClick={onBack}>EQUIPE →</a>
+            </div>
+            <div className="footer-col">
+              <a href="#modalidades" onClick={onBack}>MODALIDADES →</a>
+              <a href="#espetaculos" onClick={onBack}>ESPETÁCULOS →</a>
+              <a href="#inicio" onClick={onBack}>INÍCIO →</a>
+            </div>
+            <div className="footer-social">
+              <a className="social-link" href="https://www.instagram.com/kelidalpianstudiodedanca/" target="_blank" rel="noreferrer">
+                <img className="social-img" src="https://cdn.jsdelivr.net/npm/simple-icons@v8/icons/instagram.svg" alt="Instagram" />
+                <span>Instagram</span>
+              </a>
+              <a className="social-link" href={studioWhatsappUrl} target="_blank" rel="noreferrer">
+                <img className="social-img" src="https://cdn.jsdelivr.net/npm/simple-icons@v8/icons/whatsapp.svg" alt="WhatsApp" />
+                <span>WhatsApp</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="footer-bottom"><p>Studio Keli Dalpian | © 2026</p></div>
+    </footer>
+  )
+}
+
+function AliceNoPaisDasMaravilhasPage({ onBack }) {
+  const galleryImages = [gallerySolo, galleryAula, galleryBarra, galleryEnsaio, galleryAulas]
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [headerIsCompact, setHeaderIsCompact] = useState(false)
+
+  useEffect(() => {
+    const updateHeaderState = () => setHeaderIsCompact(window.scrollY > 72)
+    updateHeaderState()
+    window.addEventListener('scroll', updateHeaderState, { passive: true })
+    return () => window.removeEventListener('scroll', updateHeaderState)
+  }, [])
+
+  return (
+    <main className="snow-page alice-page">
+      <div className="snow-page__shell">
+        <header className={`site-header ${headerIsCompact ? 'is-compact' : ''}`}>
+          <button className="brand snow-page__brand" type="button" onClick={onBack} aria-label="Voltar para o Studio">
+            <img src={logoRosa} alt="Studio Keli Dalpian" />
+          </button>
+          <button className="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}>
+            <span></span><span></span><span></span>
+          </button>
+          <nav className={menuOpen ? 'main-navigation is-open' : 'main-navigation'} aria-label="Navegação principal">
+            <a href="#modalidades" onClick={onBack}>Modalidades</a>
+            <a href="#studio" onClick={onBack}>Studio</a>
+            <a href="#espetaculos" onClick={onBack}>Espetáculos</a>
+          </nav>
+          <button className="login-button snow-page__cta" type="button" onClick={onBack}>Entrar</button>
+        </header>
+
+        <section className="snow-hero" aria-label="Alice no País das Maravilhas">
+          <img src={showAliceBanner} alt="Alice no País das Maravilhas" />
+          <a className="snow-hero__arrow" href="#snow-sobre-alice" aria-label="Descer para os detalhes">
+            <svg viewBox="0 0 36 22" aria-hidden="true"><path d="m3 3 15 15L33 3" /></svg>
+          </a>
+        </section>
+
+        <section className="snow-intro" id="snow-sobre-alice">
+          <img className="snow-intro__flourish snow-intro__flourish--left" src={showAliceFlourish} alt="" aria-hidden="true" />
+          <img className="snow-intro__flourish snow-intro__flourish--right" src={showAliceFlourish} alt="" aria-hidden="true" />
+          <img className="snow-intro__character" src={showAliceCharacter} alt="Bailarina caracterizada como Alice" />
+          <p>Uma viagem para um mundo onde a imaginação transforma cada passo em uma nova descoberta.</p>
+          <p>Em Alice no País das Maravilhas, o Studio Keli Dalpian reúne dança, fantasia e personagens inesquecíveis em uma experiência para toda a família.</p>
+        </section>
+
+        <section className="gallery-section snow-gallery" id="snow-galeria-alice" aria-label="Galeria do espetáculo Alice no País das Maravilhas">
+          <div className="gallery-grid">
+            {galleryImages.map((image, index) => (
+              <figure className="gallery-photo" key={`${image}-${index}`}>
+                <img src={image} alt={`Momento do espetáculo Alice ${index + 1}`} />
+              </figure>
+            ))}
+          </div>
+        </section>
+
+        <StudioFooter onBack={onBack} />
+      </div>
+    </main>
+  )
+}
+
+function BrancaDeNevePage({ onBack }) {
+  const galleryImages = [gallerySolo, galleryAula, galleryBarra, galleryEnsaio, galleryAulas]
+  const galleryPlaceholders = []
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [headerIsCompact, setHeaderIsCompact] = useState(false)
+
+  useEffect(() => {
+    const updateHeaderState = () => setHeaderIsCompact(window.scrollY > 72)
+    updateHeaderState()
+    window.addEventListener('scroll', updateHeaderState, { passive: true })
+    return () => window.removeEventListener('scroll', updateHeaderState)
+  }, [])
+
+  return (
+    <main className="snow-page">
+      <div className="snow-page__shell">
+        <header className={`site-header ${headerIsCompact ? 'is-compact' : ''}`}>
+          <button className="brand snow-page__brand" type="button" onClick={onBack} aria-label="Voltar para o Studio">
+            <img src={logoRosa} alt="Studio Keli Dalpian" />
+          </button>
+          <nav aria-label="Navegação do espetáculo">
+            <a href="#snow-sobre">HISTÓRIA</a>
+            <a href="#studio" onClick={onBack}>Studio</a>
+            <a href="#espetaculos" onClick={onBack}>Espetáculos</a>
+          </nav>
+          <button className="login-button snow-page__cta" type="button" onClick={onBack}>Entrar</button>
+        </header>
+
+        <section className="snow-hero" aria-label="Branca de Neve">
+          <img src={showBrancaBanner} alt="Branca de Neve" />
+          <a className="snow-hero__arrow" href="#snow-sobre" aria-label="Descer para os detalhes">
+            <svg viewBox="0 0 36 22" aria-hidden="true"><path d="m3 3 15 15L33 3" /></svg>
+          </a>
+        </section>
+
+        <section className="snow-intro" id="snow-sobre">
+          <img className="snow-intro__flourish snow-intro__flourish--left" src={showBrancaFlourish} alt="" aria-hidden="true" />
+          <img className="snow-intro__flourish snow-intro__flourish--right" src={showBrancaFlourish} alt="" aria-hidden="true" />
+          <img className="snow-intro__character" src={showBrancaCharacter} alt="Bailarina caracterizada como Branca de Neve" />
+          <p>Em dezembro de 2025, o Studio Keli Dalpian apresenta uma nova versão de um clássico que atravessa gerações.</p>
+          <p>Uma história de coragem, amizade e encanto, contada através da dança por nossos alunos e professores.</p>
+        </section>
+
+        <section className="snow-gallery" id="snow-galeria" aria-label="Galeria do espetáculo">
+          <div className="gallery-grid">
+            {galleryImages.map((image, index) => (
+              <figure className="gallery-photo" key={`${image}-${index}`}>
+                <img src={image} alt={`Momento do Studio Keli Dalpian ${index + 1}`} />
+              </figure>
+            ))}
+            {galleryPlaceholders.map((_, index) => <div className="snow-gallery__placeholder" key={index} aria-label={`Foto ${index + 1} do espetáculo`} />)}
+          </div>
+        </section>
+
+        <StudioFooter onBack={onBack} />
+        <footer className="snow-footer" id="snow-contato">
+          <img src={logoBranca} alt="Studio Keli Dalpian" />
+          <p>dança · arte · movimento</p>
+          <div className="snow-footer__links">
+            <a href="https://www.instagram.com/kelidalpianstudiodedanca/" target="_blank" rel="noreferrer">Instagram</a>
+            <a href={studioWhatsappUrl} target="_blank" rel="noreferrer">WhatsApp</a>
+          </div>
+          <small>Studio Keli Dalpian © 2025</small>
+        </footer>
+      </div>
+    </main>
+  )
+}
+
+function BelaEFeraPage({ onBack }) {
+  const galleryImages = [gallerySolo, galleryAula, galleryBarra, galleryEnsaio, galleryAulas]
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [headerIsCompact, setHeaderIsCompact] = useState(false)
+
+  useEffect(() => {
+    const updateHeaderState = () => setHeaderIsCompact(window.scrollY > 72)
+    updateHeaderState()
+    window.addEventListener('scroll', updateHeaderState, { passive: true })
+    return () => window.removeEventListener('scroll', updateHeaderState)
+  }, [])
+
+  return (
+    <main className="snow-page bela-page">
+      <div className="snow-page__shell">
+        <header className={`site-header ${headerIsCompact ? 'is-compact' : ''}`}>
+          <button className="brand snow-page__brand" type="button" onClick={onBack} aria-label="Voltar para o Studio"><img src={logoRosa} alt="Studio Keli Dalpian" /></button>
+          <button className="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}><span></span><span></span><span></span></button>
+          <nav className={menuOpen ? 'main-navigation is-open' : 'main-navigation'} aria-label="Navegação principal">
+            <a href="#bela-sobre">HISTÓRIA</a><a href="#studio" onClick={onBack}>Studio</a><a href="#espetaculos" onClick={onBack}>Espetáculos</a>
+          </nav>
+          <button className="login-button snow-page__cta" type="button" onClick={onBack}>Entrar</button>
+        </header>
+
+        <section className="snow-hero" aria-label="A Bela e a Fera">
+          <img src={showBelaFeraBanner} alt="A Bela e a Fera" />
+          <a className="snow-hero__arrow" href="#bela-sobre" aria-label="Descer para os detalhes"><svg viewBox="0 0 36 22" aria-hidden="true"><path d="m3 3 15 15L33 3" /></svg></a>
+        </section>
+
+        <section className="snow-intro bela-intro" id="bela-sobre">
+          <img className="snow-intro__flourish snow-intro__flourish--left" src={showAliceFlourish} alt="" aria-hidden="true" />
+          <img className="snow-intro__flourish snow-intro__flourish--right" src={showAliceFlourish} alt="" aria-hidden="true" />
+          <img className="snow-intro__character" src={showBelaFeraCharacter} alt="Bailarina caracterizada como Bela" />
+          <p>Uma história de amor, coragem e transformação contada através da beleza da dança.</p>
+          <p>Em A Bela e a Fera, o Studio Keli Dalpian convida o público a entrar em um mundo encantado, onde cada movimento revela a força dos sentimentos e o poder de enxergar além das aparências.</p>
+        </section>
+
+        <section className="gallery-section snow-gallery bela-gallery" id="bela-galeria" aria-label="Galeria do espetáculo A Bela e a Fera">
+          <div className="gallery-grid">{galleryImages.map((image, index) => <figure className="gallery-photo" key={`${image}-${index}`}><img src={image} alt={`Momento do espetáculo A Bela e a Fera ${index + 1}`} /></figure>)}</div>
+        </section>
+        <StudioFooter onBack={onBack} />
+      </div>
     </main>
   )
 }

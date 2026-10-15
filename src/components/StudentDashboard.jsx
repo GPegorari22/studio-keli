@@ -1,4 +1,6 @@
 import { Component, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import AOS from 'aos'
+import 'aos/dist/aos.css'
 import seuMovimento from '../assets/seu-movimento.png'
 import studentRibbon from '../assets/student-ribbon.png'
 import profileIcon from '../assets/student-icon-profile.png'
@@ -26,7 +28,6 @@ import storeCategoryClothes from '../assets/store-category-clothes.png'
 import storeCategoryAccessories from '../assets/store-category-accessories.png'
 import storeCategoryOther from '../assets/store-category-other.png'
 import evolutionStudentImage from '../assets/card-imagemAluno.png'
-import feedbackImage from '../assets/professora-generica.png'
 import { supabase } from '../lib/supabase.js'
 import './StudentDashboard.css'
 
@@ -242,11 +243,10 @@ function ProgressChart({ criteria, animationKey }) {
   )
 }
 
-function Evolution({ criteria, studentName, evaluation, evaluationHistory, animationKey }) {
+function Evolution({ criteria, evaluation, evaluationHistory, animationKey }) {
   const [activeTrajectoryPoint, setActiveTrajectoryPoint] = useState(null)
   const trajectorySvgRef = useRef(null)
   const evaluationDate = evaluation?.data ? shortDate.format(toDate(evaluation.data)) : 'Sem registro'
-  const feedback = evaluation?.observacoes || 'Sua avaliação será atualizada pelo Studio apàs o próximo acompanhamento.'
   const trajectory = (evaluationHistory || []).slice(-6)
   const points = trajectory.map((entry, index) => {
     const x = trajectory.length === 1 ? 34 : 34 + (441 * index) / (trajectory.length - 1)
@@ -342,10 +342,6 @@ function Evolution({ criteria, studentName, evaluation, evaluationHistory, anima
               </g>
             })}
           </svg> : <p className="student-empty-chart">Sua trajetória aparecerá apàs a primeira avaliação.</p>}
-      </section>
-      <section className="student-evolution-page__feedback" aria-labelledby="feedback-title">
-        <div className="student-evolution-page__feedback-avatar"><img src={feedbackImage} alt={`Professora responsvel pelo feedback de ${studentName}`} /></div>
-        <div><h3 id="feedback-title">Feedback</h3><p>{feedback}</p></div>
       </section>
     </section>
   )
@@ -712,6 +708,7 @@ function StorePage() {
 
 function Calendar({ scheduledClasses, today }) {
   const [displayedMonth, setDisplayedMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1))
+  const [selectedDate, setSelectedDate] = useState(() => today.toISOString().slice(0, 10))
   const year = displayedMonth.getFullYear()
   const monthIndex = displayedMonth.getMonth()
   const firstWeekday = displayedMonth.getDay()
@@ -720,6 +717,17 @@ function Calendar({ scheduledClasses, today }) {
   const days = Array.from({ length: Math.ceil((firstWeekday + daysInMonth) / 7) * 7 }, (_, index) => new Date(year, monthIndex, index - firstWeekday + 1))
   const month = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(displayedMonth).replace(' de ', ' ')
   const changeMonth = (offset) => setDisplayedMonth(new Date(year, monthIndex + offset, 1))
+  const selectedLessons = (scheduledClasses || []).filter((lesson) => lesson.data === selectedDate)
+  const handleDayClick = (event) => {
+    const dayElement = event.target.closest('span')
+    const index = dayElement ? [...event.currentTarget.children].indexOf(dayElement) : -1
+    if (index >= 0 && days[index]) {
+      const date = days[index]
+      setSelectedDate(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`)
+      event.currentTarget.querySelectorAll('span').forEach((element) => element.classList.remove('is-selected'))
+      dayElement.classList.add('is-selected')
+    }
+  }
 
   return (
     <section className="student-calendar" id="calendario-resumo" aria-label={`Calendário de ${month}`} tabIndex={-1}>
@@ -731,13 +739,16 @@ function Calendar({ scheduledClasses, today }) {
       <div className="student-calendar__week" aria-hidden="true">
         {['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SB'].map((day) => <span key={day}>{day}</span>)}
       </div>
-      <div className="student-calendar__days">
+      <div className="student-calendar__days" onClick={handleDayClick} role="grid" aria-label="Selecione uma data">
         {days.map((date) => {
           const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
           const isToday = date.toDateString() === today.toDateString()
           const hasClass = activeDays.has(key)
           return <span key={key} className={[date.getMonth() !== monthIndex && 'is-outside', isToday && 'is-today', hasClass && 'has-class'].filter(Boolean).join(' ')} aria-current={isToday ? 'date' : undefined} aria-label={`${ptDate.format(date)}${hasClass ? ', aula agendada' : ''}`}>{date.getDate()}</span>
         })}
+      </div>
+      <div className="student-calendar__events" aria-live="polite">
+        {selectedLessons.length ? selectedLessons.map((lesson, index) => <p key={`${lesson.id_aula || lesson.data}-${index}`}><strong>{time(lesson.horario_inicio)} - {time(lesson.horario_fim)}</strong> · {lesson.modalidade || 'Aula'}</p>) : <p>Nenhuma aula agendada nessa data.</p>}
       </div>
     </section>
   )
@@ -813,6 +824,36 @@ export default function StudentDashboard({ session, navigate }) {
   const [evolutionAnimationKey, setEvolutionAnimationKey] = useState(0)
   const [viewTransition, setViewTransition] = useState(false)
   const today = new Date()
+
+  useEffect(() => {
+    const animatedElements = document.querySelectorAll('.student-page .student-view-content > section, .student-page .student-view-content > .student-hero-layout, .student-page .student-view-content > .student-summary, .student-page .student-view-content > .student-home-evolution')
+    animatedElements.forEach((element, index) => {
+      if (!element.dataset.aos) element.dataset.aos = index % 3 === 0 ? 'fade-up' : 'fade-in'
+      if (!element.dataset.aosDuration) element.dataset.aosDuration = '560'
+      if (!element.dataset.aosEasing) element.dataset.aosEasing = 'ease-out-cubic'
+      if (!element.dataset.aosDelay) element.dataset.aosDelay = String(Math.min(index * 70, 210))
+    })
+    const scrollRoot = document.querySelector('.student-page .student-content')
+    const observer = scrollRoot ? new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) entry.target.classList.add('aos-animate')
+      })
+    }, { root: scrollRoot, threshold: 0.12 }) : null
+    animatedElements.forEach((element) => observer?.observe(element))
+    AOS.init({
+      duration: 560,
+      easing: 'ease-out-cubic',
+      once: true,
+      offset: 32,
+      mirror: false,
+      disable: () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    })
+    AOS.refreshHard()
+    return () => {
+      observer?.disconnect()
+      AOS.refreshHard()
+    }
+  }, [activeView, loading])
 
   useEffect(() => {
     if (activeView === 'evolution') setEvolutionAnimationKey((key) => key + 1)
@@ -1017,7 +1058,7 @@ export default function StudentDashboard({ session, navigate }) {
             <section className="student-home-evolution" aria-labelledby="home-evolution-title"><div className="student-home-evolution__header"><h2 id="home-evolution-title">Sua evolução</h2><button type="button" onClick={() => setActiveView('evolution')}>Ver detalhes →</button></div><div className="student-home-evolution__content"><ProgressChart criteria={criteria} /><img src={evolutionStudentImage} alt="Bailarina em movimento" /></div></section>
             {!criteria.length && <p className="student-empty-chart">Sua evolução aparecerá aqui apàs a primeira avaliação.</p>}
 
-          </> : activeView === 'agenda' ? <Agenda scheduledClasses={lessons} today={today} /> : activeView === 'evolution' ? <Evolution key={evolutionAnimationKey} animationKey={evolutionAnimationKey} criteria={criteria} studentName={studentFullName} evaluation={evolutionEvaluation} evaluationHistory={evaluationHistory} /> : activeView === 'attendance' ? <AttendancePage attendance={attendance} attendanceHistory={attendanceHistory} financial={financial} /> : <StorePage />}</div>
+          </> : activeView === 'agenda' ? <Agenda scheduledClasses={lessons} today={today} /> : activeView === 'evolution' ? <Evolution key={evolutionAnimationKey} animationKey={evolutionAnimationKey} criteria={criteria} evaluation={evolutionEvaluation} evaluationHistory={evaluationHistory} /> : activeView === 'attendance' ? <AttendancePage attendance={attendance} attendanceHistory={attendanceHistory} financial={financial} /> : <StorePage />}</div>
         </div>
         <footer className="student-footer">Studio Keli Dalpian <span>|</span>  {today.getFullYear()}</footer>
       </section>

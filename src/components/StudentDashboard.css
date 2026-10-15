@@ -377,6 +377,19 @@
   background: #f6bfc0;
 }
 
+.student-calendar header button::before {
+  width: 7px;
+  height: 7px;
+  border-top: 2px solid currentColor;
+  border-left: 2px solid currentColor;
+  content: '';
+  transform: rotate(-45deg);
+}
+
+.student-calendar header button:last-child::before {
+  transform: rotate(135deg);
+}
+
 .student-calendar__week,
 .student-calendar__days {
   display: grid;
@@ -405,6 +418,15 @@
   background: #ffffff8c;
   font-size: calc(6.2 * var(--student-unit));
   line-height: 1.15;
+  cursor: pointer;
+  transition: background-color 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.student-calendar__days span:hover,
+.student-calendar__days span.is-selected {
+  background: #f6bfc0;
+  color: var(--student-navy);
+  transform: translateY(-1px);
 }
 
 .student-calendar__days .is-outside {
@@ -427,6 +449,20 @@
   background: #f2b5bd;
   color: var(--student-navy);
   font-weight: 700;
+}
+
+.student-calendar__events {
+  min-height: 28px;
+  margin-top: calc(4 * var(--student-unit));
+  padding-top: calc(3 * var(--student-unit));
+  border-top: 1px solid #dfe3e8;
+  color: var(--student-navy);
+  font-size: calc(5.5 * var(--student-unit));
+  line-height: 1.35;
+}
+
+.student-calendar__events p {
+  margin: 0;
 }
 
 .student-summary {
@@ -3781,6 +3817,57 @@
 
   .student-footer {
     font-size: 9px;
+  }
+}
+
+/* Ajustes pontuais da Página do Aluno. */
+.student-page .student-view-content > [data-aos],
+.student-page .student-view-content > .student-hero-layout,
+.student-page .student-view-content > .student-summary,
+.student-page .student-view-content > .student-home-evolution {
+  transition-timing-function: cubic-bezier(.16, 1, .3, 1);
+}
+
+.student-page .student-view-content,
+.student-page .student-workspace.is-transitioning {
+  animation-duration: 520ms;
+  animation-timing-function: cubic-bezier(.16, 1, .3, 1);
+}
+
+.student-page .student-footer {
+  min-height: 48px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  box-shadow: none;
+  font-size: 11px;
+}
+
+.student-page:has([role="dialog"]) .student-footer {
+  z-index: 0;
+  filter: none;
+  opacity: 1;
+  box-shadow: none;
+}
+
+.student-page .store-page__search {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.student-page .store-page__search input:focus-visible {
+  outline: 2px solid var(--student-rose);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .student-page [data-aos],
+  .student-page .student-view-content,
+  .student-page .student-workspace.is-transitioning {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
   }
 }
 

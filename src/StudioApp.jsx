@@ -4,10 +4,11 @@ import AuthPage from './components/AuthPage.jsx'
 import StudentDashboard from './components/StudentDashboard.jsx'
 import StudentTransition from './components/StudentTransition.jsx'
 import AdminDashboard from './components/AdminDashboard.jsx'
+import TeacherDashboard from './components/TeacherDashboard.jsx'
 import { supabase } from './lib/supabase.js'
 
 const authRoutes = new Set(['entrar', 'primeiro-acesso', 'recuperar-senha', 'minha-conta'])
-const dashboardRoutes = new Set(['transicao-aluno', 'aluno', 'admin'])
+const dashboardRoutes = new Set(['transicao-aluno', 'aluno', 'admin', 'professora'])
 
 function readLocation() {
   const url = new URL(window.location.href)
@@ -76,6 +77,7 @@ export default function StudioApp() {
   if (location.route === 'transicao-aluno') return <StudentTransition navigate={navigate} />
   if (location.route === 'aluno') return <StudentDashboard session={session} navigate={navigate} />
   if (location.route === 'admin') return <AdminDashboard session={session} sessionLoading={loading} navigate={navigate} />
+  if (location.route === 'professora') return <TeacherDashboard session={session} navigate={navigate} />
 
   return (
     <AuthPage

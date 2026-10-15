@@ -137,6 +137,7 @@ export default function AdminDashboard({ session, sessionLoading = false, naviga
   const [revision, setRevision] = useState(0)
   const [now, setNow] = useState(new Date())
   const [list, setList] = useState({ busca: '', filtro: '', pagina: 0, inicio: '', fim: '' })
+  const [debouncedListSearch, setDebouncedListSearch] = useState('')
   const [records, setRecords] = useState(null)
   const [listLoading, setListLoading] = useState(false)
   const [listError, setListError] = useState('')
@@ -153,6 +154,11 @@ export default function AdminDashboard({ session, sessionLoading = false, naviga
     const timer = window.setInterval(() => { setNow(new Date()); setRevision((value) => value + 1) }, 60000)
     return () => window.clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedListSearch(list.busca), 280)
+    return () => window.clearTimeout(timer)
+  }, [list.busca])
 
   useEffect(() => {
     if (!session?.user?.id) { setLoading(false); return undefined }
@@ -178,7 +184,7 @@ export default function AdminDashboard({ session, sessionLoading = false, naviga
     setListLoading(true)
     setListError('')
     supabase.rpc('admin_listagem', {
-      p_modulo: view, p_busca: list.busca, p_filtro: list.filtro,
+      p_modulo: view, p_busca: debouncedListSearch, p_filtro: list.filtro,
       p_inicio: list.inicio || range.inicio, p_fim: list.fim || range.fim,
       p_turma: classId ? Number(classId) : null, p_pagina: list.pagina,
     }).then(({ data, error: requestError }) => {
@@ -188,7 +194,7 @@ export default function AdminDashboard({ session, sessionLoading = false, naviga
       setListLoading(false)
     }).catch(() => { if (active) { setRecords(null); setListError('Não foi possível conectar ao Studio.'); setListLoading(false) } })
     return () => { active = false }
-  }, [view, list, range.inicio, range.fim, classId, session?.user?.id, revision])
+  }, [view, list.filtro, list.pagina, list.inicio, list.fim, debouncedListSearch, range.inicio, range.fim, classId, session?.user?.id, revision])
 
   const openView = useCallback((module, filter = '', query = '') => {
     const agenda = module === 'agenda'
@@ -197,6 +203,7 @@ export default function AdminDashboard({ session, sessionLoading = false, naviga
     const firstSearchDay = new Date(today + 'T12:00:00-03:00')
     firstSearchDay.setUTCDate(firstSearchDay.getUTCDate() - 1066)
     setList({ busca: query, filtro: filter, pagina: 0, inicio: agenda ? today : module === 'busca' ? studioDate(firstSearchDay) : '', fim: agenda ? studioDate(lastDay) : module === 'busca' ? studioDate(lastDay) : '' })
+    setDebouncedListSearch(query)
     setRecords(null)
     setSelected(null)
     setView(module)
@@ -609,7 +616,6 @@ function SelectField({ label, value, onChange, options, required = false }) {
 }
 
 function PeopleView({ view = 'alunos', data, list, setList, records, loading, error, refresh, openView, onSelect, turmas, classId, setClassId, onOpenClass }) {
-  if (view === 'professores' || view === 'turmas') return <><PeopleTop data={data} openView={openView} /><PeopleDirectory view={view} list={list} setList={setList} records={records} loading={loading} error={error} refresh={refresh} openView={openView} onSelect={onSelect} onOpenClass={onOpenClass} /></>
   const stats = data.indicadores || {}
   const pending = data.pendencias?.matriculas || 0
   const options = filterOptions('alunos')
@@ -618,6 +624,7 @@ function PeopleView({ view = 'alunos', data, list, setList, records, loading, er
   const [filtersOpen, setFiltersOpen] = useState(true)
   const change = (field, value) => setList((current) => ({ ...current, [field]: value, pagina: 0 }))
   const students = records?.registros || []
+  if (view === 'professores' || view === 'turmas') return <><PeopleTop data={data} openView={openView} /><PeopleDirectory view={view} list={list} setList={setList} records={records} loading={loading} error={error} refresh={refresh} openView={openView} onSelect={onSelect} onOpenClass={onOpenClass} /></>
   const toggleStudentStatus = async (student) => {
     const nextStatus = /inativ/i.test(student.status || '') ? 'ativo' : 'inativo'
     setChangingStudentId(student.id)

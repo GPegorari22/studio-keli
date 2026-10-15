@@ -156,7 +156,9 @@ export default function AuthPage({ mode, session, loading, callback, initialErro
         setPassword('')
         setCompleted(true)
         const { data: adminAccess } = await supabase.rpc('is_admin')
-        navigate(adminAccess === true ? 'admin' : 'transicao-aluno')
+        if (adminAccess === true) { navigate('admin'); return }
+        const { data: teacherAccess } = await supabase.rpc('is_professora')
+        navigate(teacherAccess === true ? 'professora' : 'transicao-aluno')
       })
     } else if (currentStep === 1) {
       requestConfirmationLink()
