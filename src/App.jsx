@@ -38,6 +38,7 @@ import showBelaFeraPattern from './assets/show-bela-fera-padrao.png'
 import showBelaFeraCharacter from './assets/show-bela-fera-personagem.png'
 import secaoEspetaculos from './assets/secao-espetaculos.png'
 import professoraGenerica from './assets/professora-generica.png'
+import 'aos/dist/aos.css'
 import './App.css'
 import inscricao from './assets/inscrição.png'
 import { supabase } from './lib/supabase.js'
@@ -281,31 +282,11 @@ function App({ session }) {
       offset: 80,
       disable: () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     })
-
-    const animatedSections = document.querySelectorAll(
-      '.home-page [data-aos], .home-page .modality, .home-page .teacher, .home-page .show, .home-page .gallery-photo',
-    )
-    animatedSections.forEach((element, index) => {
-      if (!element.dataset.aos) element.dataset.aos = 'fade-up'
-      element.style.setProperty('--aos-delay', `${Math.min(index * 70, 280)}ms`)
-      element.classList.add('aos-init')
-    })
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting) return
-        entry.target.classList.add('aos-animate')
-        observer.unobserve(entry.target)
-      })
-    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' })
-    animatedSections.forEach((element) => observer.observe(element))
-
-    const refreshAos = () => AOS.refresh()
-    window.addEventListener('resize', refreshAos)
-    return () => {
-      observer.disconnect()
-      window.removeEventListener('resize', refreshAos)
-    }
   }, [])
+
+  useEffect(() => {
+    AOS.refreshHard()
+  }, [activeModalityIndex, activeTeacherIndex, activeShowIndex])
 
   const openTrialModal = () => {
     setTrialForm(initialTrialForm)
@@ -657,7 +638,7 @@ function App({ session }) {
       </header>
 
       <section className="hero-section" aria-labelledby="home-title">
-        <div className="hero-banner" id="inicio">
+        <div className="hero-banner" id="inicio" data-aos="fade-up">
           <div className="hero-carousel" key={homeBannerIndex}>
             <img src={homepageBanners[homeBannerIndex].image} alt={homepageBanners[homeBannerIndex].alt} />
           </div>
@@ -666,7 +647,7 @@ function App({ session }) {
           <div className="hero-carousel__dots" aria-label="Slides do banner">{homepageBanners.map((banner, index) => <button key={banner.alt} type="button" className={index === homeBannerIndex ? 'is-active' : ''} aria-label={`Ir para o banner ${index + 1}`} onClick={() => setHomeBannerIndex(index)} />)}</div>
         </div>
 
-        <a className="scroll-indicator" href="#modalidades" aria-label="Ver modalidades">
+        <a className="scroll-indicator" href="#modalidades" aria-label="Ver modalidades" data-aos="fade-up">
           <svg viewBox="0 0 32 20" aria-hidden="true">
             <path d="m3 3 13 13L29 3" />
           </svg>
@@ -692,13 +673,15 @@ function App({ session }) {
             onClick={() => changeModality(-1)}
           ></button>
           <div className="modalities-list">
-            {displayedModalities.map((modality) => (
+            {displayedModalities.map((modality, index) => (
               <a
                 className={`modality ${modality.featured ? 'modality--featured' : ''}`}
                 href={`#${modality.slug}`}
                 key={modality.slug}
                 aria-label={`Conheça ${modality.name}`}
                 aria-haspopup={modalityDetails[modality.slug] ? 'dialog' : undefined}
+                data-aos="fade-up"
+                data-aos-delay={index * 100}
                 onClick={(event) => {
                   const details = modalityDetails[modality.slug]
                   if (details) {
@@ -725,7 +708,7 @@ function App({ session }) {
           ></button>
         </div>
       </section>
-      <section className="studio-section" id="studio" aria-labelledby="studio-title">
+      <section className="studio-section" id="studio" aria-labelledby="studio-title" data-aos="fade-up">
         <div className="studio-inner">
           <div className="studio-media">
             <div className="studio-card">
@@ -774,7 +757,7 @@ function App({ session }) {
             ></button>
 
             <div className="teachers-list">
-              {displayedTeachers.map((teacher) => {
+              {displayedTeachers.map((teacher, index) => {
                 const isModalAvailable = Boolean(teacherDetails[teacher.slug])
                 const teacherCard = (
                     <div className="teacher-card">
@@ -791,12 +774,14 @@ function App({ session }) {
                     type="button"
                     key={teacher.slug}
                     aria-label={`Conheça ${teacherDetails[teacher.slug].name}`}
+                    data-aos="fade-up"
+                    data-aos-delay={index * 100}
                     onClick={() => openTeacherModal(teacher.slug)}
                   >
                     {teacherCard}
                   </button>
                 ) : (
-                  <div className={`teacher ${teacher.featured ? 'teacher--featured' : ''}`} key={teacher.slug}>
+                  <div className={`teacher ${teacher.featured ? 'teacher--featured' : ''}`} key={teacher.slug} data-aos="fade-up" data-aos-delay={index * 100}>
                     {teacherCard}
                   </div>
                 )
@@ -827,11 +812,13 @@ function App({ session }) {
             ></button>
 
             <div className="shows-list">
-              {displayedShows.map((show) => (
+              {displayedShows.map((show, index) => (
                 <a
                   key={show.slug}
                   href={`#${show.slug}`}
                   className={`show ${show.featured ? 'show--featured' : ''} show-${show.slug}`}
+                  data-aos="fade-up"
+                  data-aos-delay={index * 100}
                   onClick={(event) => {
                     if (show.slug === 'branca-de-neve') {
                       event.preventDefault()
@@ -873,7 +860,7 @@ function App({ session }) {
 
       <section className="gallery-section" id="galeria" aria-label="Galeria do Studio" data-aos="fade-up">
         <div className="gallery-grid">
-          {[gallerySolo, galleryAula, galleryBarra, galleryEnsaio, galleryAulas].map((image, index) => <figure className="gallery-photo" key={`${image}-${index}`}><img src={image} alt={`Momento do Studio Keli Dalpian ${index + 1}`} /></figure>)}
+          {[gallerySolo, galleryAula, galleryBarra, galleryEnsaio, galleryAulas].map((image, index) => <figure className="gallery-photo" key={`${image}-${index}`} data-aos="fade-up" data-aos-delay={index * 100}><img src={image} alt={`Momento do Studio Keli Dalpian ${index + 1}`} /></figure>)}
         </div>
       </section>
 
@@ -890,7 +877,7 @@ function App({ session }) {
           </div>
         </div>
       </section>
-      <footer className="site-footer" aria-labelledby="footer-title">
+      <footer className="site-footer" aria-labelledby="footer-title" data-aos="fade-up">
         <div className="footer-top">
           <div className="footer-logo">
             <img src={logoBranca} alt="Keli Dalpian" />
